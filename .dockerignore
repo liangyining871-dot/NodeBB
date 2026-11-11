@@ -8,3 +8,9 @@ renovate.json
 *.yml
 *.md
 Dockerfile
+
+# Never include local environment settings or generated credentials in images
+.env
+.env.*
+config.json
+config.json.*

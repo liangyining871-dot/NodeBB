@@ -78,3 +78,8 @@ test.out
 .docker/**
 !**/.gitkeep
 .aider*
+
+# Local environment settings and credentials
+.env
+.env.*
+!.env.example
