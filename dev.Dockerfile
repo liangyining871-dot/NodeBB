@@ -71,7 +71,9 @@ RUN chmod +x /usr/local/bin/entrypoint.sh \
 
 USER ${USER}
 
-EXPOSE 4567
+ENV PORT=9203 port=9203
+
+EXPOSE 9203
 
 VOLUME ["/usr/src/app/node_modules", "/usr/src/app/build", "/usr/src/app/public/uploads", "/opt/config/"]
 
