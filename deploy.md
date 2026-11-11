@@ -74,3 +74,12 @@ docker compose -p nodebb -f docker-compose-pgsql.yml up -d --no-build --no-deps 
 ```
 
 更新时保留 `.docker`，不要重新执行首次初始化。
+# 企业 Uniportal 登录开发
+
+插件源码、配置说明和联调验收清单见
+[plugins/nodebb-plugin-sso-uniportal/README.md](plugins/nodebb-plugin-sso-uniportal/README.md)。
+`install/package.json` 已声明本地插件依赖。现有论坛仅需安装并启用插件、填写环境变量和重启，
+不要重新执行 setup 或重初始化数据库。企业登录验证完成前保留管理员和本地登录。
+
+`.env.example` 中企业 OAuth2 默认关闭；端点、客户端参数及回调白名单需按本应用确认。
+本轮未变更 Docker 入口、compose 和论坛权限，离线镜像部署另行处理。

@@ -1,0 +1,11 @@
+{
+  "id": "nodebb-plugin-sso-uniportal",
+  "name": "Enterprise Uniportal login",
+  "library": "./library.js",
+  "hooks": [
+    { "hook": "filter:auth.init", "method": "auth" },
+    { "hook": "response:middleware.authenticate", "method": "redirectGuest" },
+    { "hook": "filter:login.build", "method": "loginMessage" },
+    { "hook": "filter:users.get", "method": "displayUsers" }
+  ]
+}
