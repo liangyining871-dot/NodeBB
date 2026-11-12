@@ -623,6 +623,13 @@ install.setup = async function () {
 		checkSetupFlagEnv();
 		checkCIFlag();
 		await setupConfig();
+		const initialAppearance = require('./initial-appearance');
+		const appearanceDb = require('./database');
+		const appearance = await initialAppearance.prepare({
+			db: appearanceDb,
+			snapshotPath: process.env.INITIAL_APPEARANCE_SNAPSHOT,
+		});
+		const appearanceAlreadyApplied = await appearanceDb.getObjectField('deployment:initial-appearance', 'state') === 'complete';
 		await setupDefaultConfigs();
 		await enableDefaultTheme();
 		await createCategories();
@@ -633,11 +640,16 @@ install.setup = async function () {
 		await giveWorldPrivileges();
 		await createMenuItems();
 		await createWelcomePost();
-		await enableDefaultPlugins();
-		await setCopyrightWidget();
+		if (!appearanceAlreadyApplied) {
+			await enableDefaultPlugins();
+			await setCopyrightWidget();
+		}
 		await copyFavicon();
 		if (nconf.get('plugins:autoinstall')) await installPlugins();
 		await checkUpgrade();
+		if (await initialAppearance.apply({ db: appearanceDb, meta: require('./meta'), snapshot: appearance })) {
+			winston.info('[install] Applied initial deployment appearance');
+		}
 
 		const data = {
 			...adminInfo,

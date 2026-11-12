@@ -1,0 +1,272 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-11-12T08:17:02.500Z",
+  "nodebbVersion": "4.16.7",
+  "targetUrl": "http://aixsilicon.developers.hisilicon.com:9203",
+  "config": {
+    "title": "AIXSILICON广场",
+    "keywords": "",
+    "og:image": "",
+    "theme:id": "nodebb-theme-lavender",
+    "theme:src": "",
+    "title:url": "",
+    "brand:logo": "/assets/brand/huawei-emblem-transparent.png",
+    "teaserPost": "last-post",
+    "theme:type": "local",
+    "themeColor": "",
+    "defaultLang": "zh-CN",
+    "description": "",
+    "title:short": "",
+    "titleLayout": "",
+    "browserTitle": "AIXSILICON广场",
+    "postsPerPage": 20,
+    "tinyconColor": "#ffffff",
+    "brand:favicon": "",
+    "homePageRoute": "categories",
+    "homePageTitle": "",
+    "showSiteTitle": 1,
+    "topicsPerPage": 20,
+    "autoDetectLang": 0,
+    "bootswatchSkin": "",
+    "brand:logo:alt": "HUAWEI",
+    "brand:logo:url": "/",
+    "homePageCustom": "",
+    "backgroundColor": "",
+    "brand:touchIcon": "",
+    "theme:staticDir": "",
+    "theme:templates": "",
+    "brand:screenshot": "",
+    "allowUserHomePage": 1,
+    "categoriesPerPage": 50,
+    "disableSignatures": 0,
+    "tinyconBackground": "#ff0000",
+    "brand:maskableIcon": "",
+    "brand:logo:updatedAt": 1794445263522,
+    "disableCustomUserSkins": 0,
+    "updateUrlWithPostIndex": 1,
+    "showPostPreviewsOnHover": 1,
+    "showFullnameAsDisplayName": 0,
+    "showPostUploadsAsThumbnails": 1
+  },
+  "plugins": [
+    {
+      "id": "nodebb-plugin-composer-default",
+      "version": "11.0.16",
+      "score": 0
+    },
+    {
+      "id": "nodebb-theme-lavender",
+      "version": "8.1.2",
+      "score": 0
+    },
+    {
+      "id": "nodebb-plugin-dbsearch",
+      "version": "7.0.7",
+      "score": 1
+    },
+    {
+      "id": "nodebb-plugin-markdown",
+      "version": "13.2.13",
+      "score": 2
+    },
+    {
+      "id": "nodebb-plugin-mentions",
+      "version": "5.0.5",
+      "score": 3
+    },
+    {
+      "id": "nodebb-widget-essentials",
+      "version": "8.0.10",
+      "score": 5
+    },
+    {
+      "id": "nodebb-rewards-essentials",
+      "version": "1.0.3",
+      "score": 6
+    },
+    {
+      "id": "nodebb-plugin-emoji",
+      "version": "6.0.19",
+      "score": 7
+    },
+    {
+      "id": "nodebb-plugin-emoji-android",
+      "version": "4.1.1",
+      "score": 8
+    },
+    {
+      "id": "nodebb-plugin-private-attachments",
+      "version": "0.1.0",
+      "score": 10
+    },
+    {
+      "id": "nodebb-plugin-sso-uniportal",
+      "version": "0.1.0",
+      "score": 10
+    }
+  ],
+  "presentationHashes": [
+    {
+      "_key": "navigation:enabled:0",
+      "data": {
+        "text": "[[global:header.categories]]",
+        "order": "0",
+        "route": "/categories",
+        "title": "[[global:header.categories]]",
+        "enabled": true,
+        "iconClass": "fa-list",
+        "textClass": "d-lg-none"
+      }
+    },
+    {
+      "_key": "navigation:enabled:1",
+      "data": {
+        "id": "unread-count",
+        "text": "[[global:header.unread]]",
+        "order": "1",
+        "route": "/unread",
+        "title": "[[global:header.unread]]",
+        "groups": "[\"registered-users\"]",
+        "enabled": true,
+        "iconClass": "fa-inbox",
+        "textClass": "d-lg-none"
+      }
+    },
+    {
+      "_key": "navigation:enabled:2",
+      "data": {
+        "text": "[[global:header.recent]]",
+        "order": "2",
+        "route": "/recent",
+        "title": "[[global:header.recent]]",
+        "enabled": true,
+        "iconClass": "fa-clock-o",
+        "textClass": "d-lg-none"
+      }
+    },
+    {
+      "_key": "navigation:enabled:3",
+      "data": {
+        "text": "[[global:header.tags]]",
+        "order": "3",
+        "route": "/tags",
+        "title": "[[global:header.tags]]",
+        "enabled": true,
+        "iconClass": "fa-tags",
+        "textClass": "d-lg-none"
+      }
+    },
+    {
+      "_key": "navigation:enabled:4",
+      "data": {
+        "text": "[[global:header.popular]]",
+        "order": "4",
+        "route": "/popular",
+        "title": "[[global:header.popular]]",
+        "enabled": true,
+        "iconClass": "fa-fire",
+        "textClass": "d-lg-none"
+      }
+    },
+    {
+      "_key": "navigation:enabled:5",
+      "data": {
+        "text": "[[global:header.world]]",
+        "order": "5",
+        "route": "/world",
+        "title": "[[global:header.world]]",
+        "enabled": "",
+        "iconClass": "fa-globe",
+        "textClass": "d-lg-none"
+      }
+    },
+    {
+      "_key": "navigation:enabled:6",
+      "data": {
+        "text": "[[global:header.users]]",
+        "order": "6",
+        "route": "/users",
+        "title": "[[global:header.users]]",
+        "enabled": true,
+        "iconClass": "fa-user",
+        "textClass": "d-lg-none"
+      }
+    },
+    {
+      "_key": "navigation:enabled:7",
+      "data": {
+        "text": "[[global:header.groups]]",
+        "order": "7",
+        "route": "/groups",
+        "title": "[[global:header.groups]]",
+        "enabled": true,
+        "iconClass": "fa-group",
+        "textClass": "d-lg-none"
+      }
+    },
+    {
+      "_key": "navigation:enabled:8",
+      "data": {
+        "text": "[[global:header.admin]]",
+        "order": "8",
+        "route": "/admin",
+        "title": "[[global:header.admin]]",
+        "groups": "[\"administrators\"]",
+        "enabled": true,
+        "iconClass": "fa-cogs",
+        "textClass": "d-lg-none"
+      }
+    },
+    {
+      "_key": "widgets:global",
+      "data": {
+        "drafts": "[{\"widget\":\"html\",\"data\":{\"html\":\"<footer id=\\\"footer\\\" class=\\\"container footer d-flex flex-column align-items-center gap-1 mb-2\\\">\\n\\t<span>Powered by <a class=\\\"link-secondary text-decoration-underline\\\" target=\\\"_blank\\\" href=\\\"https://nodebb.org\\\">NodeBB</a></span>\\n\\t<span><a class=\\\"link-secondary\\\" target=\\\"_blank\\\" href=\\\"//github.com/NodeBB/NodeBB/graphs/contributors\\\"><i class=\\\"fa fa-users\\\"></i> <span class=\\\"text-decoration-underline\\\">Contributors<span></a></span>\\n</footer>\",\"title\":\"\",\"container\":\"\",\"groups\":[],\"groupsHideFrom\":[]}}]",
+        "sidebar-footer": "[]"
+      }
+    }
+  ],
+  "navigation": [
+    {
+      "value": "0",
+      "score": "0"
+    },
+    {
+      "value": "1",
+      "score": "1"
+    },
+    {
+      "value": "2",
+      "score": "2"
+    },
+    {
+      "value": "3",
+      "score": "3"
+    },
+    {
+      "value": "4",
+      "score": "4"
+    },
+    {
+      "value": "5",
+      "score": "5"
+    },
+    {
+      "value": "6",
+      "score": "6"
+    },
+    {
+      "value": "7",
+      "score": "7"
+    },
+    {
+      "value": "8",
+      "score": "8"
+    }
+  ],
+  "localPolicies": {
+    "activitypubEnabled": 0,
+    "postDelay": 0,
+    "newbiePostDelay": 0,
+    "initialPostDelay": 0
+  }
+}

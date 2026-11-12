@@ -64,6 +64,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh \
 USER ${USER}
 
 ENV PORT=9203 port=9203
+ENV INITIAL_APPEARANCE_SNAPSHOT=/usr/src/app/install/docker/appearance.snapshot.json
 
 EXPOSE 9203
 
