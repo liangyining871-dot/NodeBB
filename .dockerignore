@@ -2,6 +2,11 @@
 logs
 test
 node_modules
+build
+pidfile
+backups
+docker_images
+*.tar
 commitlint.config.js
 nodebb.bat
 renovate.json

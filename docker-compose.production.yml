@@ -11,6 +11,7 @@ services:
       - '9203:9203'
     environment:
       NODE_ENV: production
+      acpPluginInstallDisabled: 'true'
       TZ: Asia/Shanghai
       CONFIG_DIR: /opt/config
       url: 'http://aixsilicon.developers.hisilicon.com:9203'
@@ -60,11 +61,6 @@ services:
       - type: bind
         source: /data/aixsilicon/nodebb/.docker/public/uploads
         target: /usr/src/app/public/uploads
-        bind:
-          create_host_path: false
-      - type: bind
-        source: /data/aixsilicon/nodebb/.docker/build
-        target: /usr/src/app/build
         bind:
           create_host_path: false
     healthcheck:

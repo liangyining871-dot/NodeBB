@@ -103,6 +103,9 @@ function getPackageManagerByLockfile() {
 }
 
 pkgInstall.installAll = () => {
+	if (process.env.OFFLINE_DEPLOYMENT === 'true') {
+		throw new Error('Offline deployment: rebuild the image to install or update dependencies');
+	}
 	const prod = process.env.NODE_ENV !== 'development';
 	let command = 'npm install';
 

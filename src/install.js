@@ -645,7 +645,7 @@ install.setup = async function () {
 			await setCopyrightWidget();
 		}
 		await copyFavicon();
-		if (nconf.get('plugins:autoinstall')) await installPlugins();
+		if (nconf.get('plugins:autoinstall') && process.env.OFFLINE_DEPLOYMENT !== 'true') await installPlugins();
 		await checkUpgrade();
 		if (await initialAppearance.apply({ db: appearanceDb, meta: require('./meta'), snapshot: appearance })) {
 			winston.info('[install] Applied initial deployment appearance');

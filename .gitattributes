@@ -6,6 +6,7 @@
 *.html		text
 *.js		text
 *.md		text
+*.sh        text eol=lf
 
 # Images should be treated as binary
 # (binary is a macro for -text -diff)

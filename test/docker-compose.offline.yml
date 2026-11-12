@@ -1,0 +1,67 @@
+# Isolated validation only. Never point these services at production data.
+name: nodebb-offline-validation
+services:
+  postgres:
+    image: postgres:16.13
+    pull_policy: never
+    environment:
+      POSTGRES_USER: nodebb_test
+      POSTGRES_PASSWORD: offline-test-only
+      POSTGRES_DB: nodebb_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nodebb_test -d nodebb_test']
+      interval: 2s
+      retries: 30
+    networks: [offline]
+  minio:
+    image: minio/minio:latest
+    pull_policy: never
+    command: ['server', '/data']
+    environment:
+      MINIO_ROOT_USER: offline-test
+      MINIO_ROOT_PASSWORD: offline-test-only
+    tmpfs:
+      - /data
+    networks: [offline]
+  nodebb:
+    image: nodebb-offline:validation
+    pull_policy: never
+    environment:
+      url: http://localhost:9203
+      port: '9203'
+      bind_address: 0.0.0.0
+      database: postgres
+      postgres__host: postgres
+      postgres__port: '5432'
+      postgres__database: nodebb_test
+      postgres__username: nodebb_test
+      postgres__password: offline-test-only
+      postgres__ssl: 'false'
+      NODEBB_ADMIN_USERNAME: offline-admin
+      NODEBB_ADMIN_PASSWORD: 'OfflineValidation!9e7c3a1b'
+      NODEBB_ADMIN_EMAIL: offline@example.invalid
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: '9000'
+      MINIO_ACCESS_KEY: offline-test
+      MINIO_SECRET_KEY: offline-test-only
+      MINIO_BUCKET: nodebb-offline-test
+      MINIO_USE_SSL: 'false'
+      UNIPORTAL_ENABLED: 'false'
+      acpPluginInstallDisabled: 'true'
+    volumes:
+      - test-config:/opt/config
+      - test-uploads:/usr/src/app/public/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks: [offline]
+networks:
+  offline:
+    internal: true
+volumes:
+  test-config:
+  test-uploads:

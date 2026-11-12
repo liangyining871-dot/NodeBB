@@ -125,6 +125,9 @@ async function step(target, parallel, targetStr) {
 }
 
 exports.build = async function (targets, options) {
+	if (process.env.OFFLINE_DEPLOYMENT === 'true') {
+		throw new Error('Offline deployment: build assets locally and release a new image');
+	}
 	if (!options) {
 		options = {};
 	}
@@ -236,6 +239,7 @@ exports.webpack = async function (options) {
 
 		if (stats.hasErrors() || stats.hasWarnings()) {
 			console.log(stats.toString('minimal'));
+			if (stats.hasErrors()) { throw new Error('Webpack asset compilation failed'); }
 		} else {
 			const statsJson = stats.toJson();
 			winston.info(`[build] ${(options.watch ? 'Watching' : 'Bundling')} took ${statsJson.time} ms`);
@@ -245,6 +249,7 @@ exports.webpack = async function (options) {
 		if (err.details) {
 			console.error(err.details);
 		}
+		throw err;
 	}
 };
 

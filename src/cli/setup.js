@@ -31,7 +31,7 @@ async function setup(initConfig) {
 
 	prestart.loadConfig(configFile);
 
-	if (!nconf.get('skip-build')) {
+	if (process.env.OFFLINE_DEPLOYMENT !== 'true' && !nconf.get('skip-build')) {
 		await build.buildAll();
 	}
 
