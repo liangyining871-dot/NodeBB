@@ -1,0 +1,11 @@
+{
+  "name": "nodebb-plugin-private-attachments",
+  "version": "0.1.0",
+  "description": "论坛私有附件存储与鉴权插件",
+  "main": "library.js",
+  "license": "GPL-3.0",
+  "private": true,
+  "nbbpm": { "compatibility": "^4.16.7" },
+  "dependencies": { "minio": "8.0.7" },
+  "scripts": { "check": "node check.js", "test": "node --test test/*.test.js" }
+}

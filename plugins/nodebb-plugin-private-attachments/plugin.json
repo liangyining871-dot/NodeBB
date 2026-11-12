@@ -1,0 +1,10 @@
+{
+  "id": "nodebb-plugin-private-attachments",
+  "name": "论坛私有附件",
+  "hooks": [
+    {
+      "hook": "static:app.load",
+      "method": "init"
+    }
+  ]
+}

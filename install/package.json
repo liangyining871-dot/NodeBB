@@ -104,6 +104,7 @@
         "multer": "2.5.0",
         "nconf": "0.13.0",
         "nodebb-plugin-sso-uniportal": "file:plugins/nodebb-plugin-sso-uniportal",
+        "nodebb-plugin-private-attachments": "file:plugins/nodebb-plugin-private-attachments",
         "nodebb-plugin-2factor": "8.0.12",
         "nodebb-plugin-composer-default": "11.0.16",
         "nodebb-plugin-dbsearch": "7.0.7",
