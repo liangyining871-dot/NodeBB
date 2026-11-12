@@ -137,18 +137,7 @@ Topics.addThumb = async (req, res) => {
 	// todo: move controller logic to src/api/topics.js
 	await api.topics._checkThumbPrivileges({ tid: req.params.tid, uid: req.uid });
 
-	const files = await uploadsController.uploadThumb(req, res); // response is handled here
-
-	// Add uploaded files to topic hash
-	if (files && files.length) {
-		for (const fileObj of files) {
-			// eslint-disable-next-line no-await-in-loop
-			await topics.thumbs.associate({
-				id: req.params.tid,
-				path: fileObj.url,
-			});
-		}
-	}
+	await uploadsController.uploadThumb(req, res); // 保存并关联后统一响应
 };
 
 

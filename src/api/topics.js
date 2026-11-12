@@ -240,6 +240,7 @@ topicsAPI.reorderThumbs = async (caller, { tid, path, order }) => {
 		id: tid,
 		path: path,
 		score: order,
+		uid: caller.uid,
 	});
 };
 

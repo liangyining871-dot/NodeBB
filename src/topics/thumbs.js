@@ -126,13 +126,16 @@ Thumbs.get = async function (tids, options) {
 };
 
 
-Thumbs.associate = async function ({ id, path, score }) {
+Thumbs.associate = async function ({ id, path, score, uid }) {
 	// Associates a newly uploaded file as a thumb to the passed-in topic
 	const topicData = await topics.getTopicData(id);
 	if (!topicData) {
 		return;
 	}
-	const isLocal = !path.startsWith('http');
+	// 存储插件可校验、复制附件，并声明论坛代理地址不属于本地磁盘文件。
+	const result = await plugins.hooks.fire('filter:topic.thumb.associate', { id, path, score, uid });
+	path = result.path;
+	const isLocal = result.isLocal ?? !path.startsWith('http');
 
 	// Normalize the path to allow for changes in upload_path (and so upload_url can be appended if needed)
 	if (isLocal) {
@@ -200,7 +203,7 @@ Thumbs.delete = async function (tid, relativePaths) {
 
 
 	if (toRemove.length) {
-		const { mainPid } = topicData.mainPid;
+		const { mainPid } = topicData;
 		topicData.thumbs = topicData.thumbs.filter(thumb => !toRemove.includes(thumb));
 		await Promise.all([
 			topics.setTopicFields(tid, {

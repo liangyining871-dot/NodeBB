@@ -10,6 +10,7 @@ const file = require('../file');
 const plugins = require('../plugins');
 const image = require('../image');
 const privileges = require('../privileges');
+const topics = require('../topics');
 
 const helpers = require('./helpers');
 
@@ -137,6 +138,12 @@ uploadsController.uploadThumb = async function (req, res) {
 		if (!isImage) {
 			throw new Error('[[error:invalid-file]]');
 		}
+		if (plugins.hooks.hasListeners('filter:uploadPostFile')) {
+			const storedFile = await plugins.hooks.fire('filter:uploadPostFile', {
+				file: uploadedFile, uid: req.uid, detected, thumbnail: true,
+			});
+			return await associateTopicThumb(req, storedFile);
+		}
 
 		await image.isFileTypeAllowed(uploadedFile.path);
 		const dimensions = await image.checkDimensions(uploadedFile.path);
@@ -149,20 +156,29 @@ uploadsController.uploadThumb = async function (req, res) {
 			});
 		}
 		if (plugins.hooks.hasListeners('filter:uploadImage')) {
-			return await plugins.hooks.fire('filter:uploadImage', {
+			const storedFile = await plugins.hooks.fire('filter:uploadImage', {
 				image: uploadedFile,
 				uid: req.uid,
 				folder: 'files',
 			});
+			return await associateTopicThumb(req, storedFile);
 		}
 
 		const storedFile = await uploadsController.uploadFile(req.uid, uploadedFile);
-		return {
+		return await associateTopicThumb(req, {
 			url: storedFile.url,
 			name: storedFile.name,
-		};
+		});
 	});
 };
+
+async function associateTopicThumb(req, storedFile) {
+	// 已有主题先完成关联再返回成功，防止响应发出后才发现鉴权或关联失败。
+	if (req.params.tid) {
+		await topics.thumbs.associate({ id: req.params.tid, path: storedFile.url, uid: req.uid });
+	}
+	return storedFile;
+}
 
 uploadsController.uploadFile = async function (uid, uploadedFile) {
 	if (plugins.hooks.hasListeners('filter:uploadFile')) {

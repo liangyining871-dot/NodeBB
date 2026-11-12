@@ -9,6 +9,30 @@
     {
       "hook": "filter:uploadPostFile",
       "method": "uploadPostFile"
+    },
+    {
+      "hook": "filter:post.create",
+      "method": "preparePost"
+    },
+    {
+      "hook": "filter:post.edit",
+      "method": "preparePost"
+    },
+    {
+      "hook": "filter:posts.purge",
+      "method": "purge"
+    },
+    {
+      "hook": "filter:topic.thumb.associate",
+      "method": "associateThumb"
+    },
+    {
+      "hook": "filter:topics.hasThumbs",
+      "method": "hasThumbs"
+    },
+    {
+      "hook": "filter:topics.getThumbs",
+      "method": "getThumbs"
     }
   ]
 }
