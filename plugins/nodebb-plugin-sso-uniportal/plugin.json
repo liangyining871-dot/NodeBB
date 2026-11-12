@@ -3,9 +3,14 @@
   "name": "Enterprise Uniportal login",
   "library": "./library.js",
   "hooks": [
+    { "hook": "filter:config.get", "method": "emailConfig" },
+    { "hook": "static:app.load", "method": "init" },
+    { "hook": "static:sockets.validateSession", "method": "socketValidate" },
+    { "hook": "action:sockets.connect", "method": "socketConnect" },
     { "hook": "filter:auth.init", "method": "auth" },
     { "hook": "response:middleware.authenticate", "method": "redirectGuest" },
     { "hook": "filter:login.build", "method": "loginMessage" },
-    { "hook": "filter:users.get", "method": "displayUsers" }
+    { "hook": "filter:users.get", "method": "displayUsers" },
+    { "hook": "filter:user.create", "method": "validateUsername" }
   ]
 }

@@ -1,6 +1,7 @@
 'use strict';
 
 const { createHash, randomBytes } = require('node:crypto');
+const { expiration, lifetime, createAccessControl } = require('./session-policy');
 const hash = value => createHash('sha256').update(value).digest('hex');
 const failure = (stage = 'authentication') => Object.assign(new Error('Enterprise login failed. Please start again or contact the administrator.'), { uniportalStage: stage });
 const failureMessages = {
@@ -28,6 +29,7 @@ function config(env = process.env) {
 		c[key] = url.toString();
 	}
 	if (!c.client || !c.secret || !c.scope) { throw failure(); }
+	lifetime(env);
 	if (new URL(c.REDIRECT_URI).pathname !== '/auth/uniportal/callback') { throw failure(); }
 	return c;
 }
@@ -48,9 +50,12 @@ function createService({ db, user, post = postJSON, now = Date.now }) {
 			let uid = record && Number(record.uid);
 			if (!uid) {
 				if (record) { throw failure(); }
+				// Validate availability before reserving provisioning; never attach to an
+				// existing local account with the same username.
+				await user.checkUsername(external);
 				if (await db.incrObjectField(key, 'claim') !== 1) { throw failure(); }
 				await db.setObject(key, { pending: 1 });
-				uid = await user.create({ username: `up-${randomBytes(6).toString('hex')}`, fullname: name }, { emailVerification: 'skip' });
+				uid = await user.create({ username: external, fullname: name }, { emailVerification: 'skip', uniportal: true });
 				await user.setUserField(uid, 'uniportalId', external);
 				await db.setObject(key, { uid, pending: 0 });
 				await user.setSetting(uid, 'showfullname', 1);
@@ -58,7 +63,7 @@ function createService({ db, user, post = postJSON, now = Date.now }) {
 			if (!await user.exists(uid) || await user.getUserField(uid, 'uniportalId') !== external) { throw failure(); }
 			await user.bans.unbanIfExpired([uid]);
 			if (Number(await user.getUserField(uid, 'banned'))) { throw failure(); }
-			await user.updateProfile(uid, { uid, fullname: name });
+			await user.updateProfile(uid, { uid, username: external, fullname: name });
 			return { uid };
 		});
 		queues.set(key, task);
@@ -89,11 +94,16 @@ function createService({ db, user, post = postJSON, now = Date.now }) {
 			if (Number(record.expires) <= now()) { throw failure('expired'); }
 			if (await db.incrObjectField(key, 'consumed') !== 1) { throw failure('replayed'); }
 			if (error !== undefined || typeof code !== 'string' || !code.trim() || code.length > 4096) { throw failure('authorization'); }
+			const issuedAt = now();
 			const token = await atStage('token', () => post(c.TOKEN_URL, { client_id: c.client, client_secret: c.secret, redirect_uri: c.REDIRECT_URI, grant_type: 'authorization_code', code }));
 			if (typeof token.access_token !== 'string' || !token.access_token) { throw failure('token'); }
+			const expiresAt = await atStage('token', async () => expiration(token, issuedAt));
 			const profile = await atStage('profile', () => post(c.USERINFO_URL, { client_id: c.client, access_token: token.access_token, scope: c.scope }));
 			if (typeof profile.uid !== 'string' || !profile.uid.trim() || profile.uid.length > 256) { throw failure('profile'); }
-			return atStage('identity', () => identity(profile));
+			const account = await atStage('identity', () => identity(profile));
+			if (now() >= expiresAt) { throw failure('expired'); }
+			req.session.uniportalAuth = { uid: account.uid, authenticatedAt: issuedAt, expiresAt };
+			return account;
 		},
 	};
 }
@@ -184,5 +194,33 @@ exports.displayUsers = async function (users) {
 };
 
 exports.createService = createService;
+exports.validateUsername = async function (data) {
+	if (data.opts.uniportal && data.user.username !== data.data.username) { throw failure('identity'); }
+	return data;
+};
 exports.config = config;
 exports.postJSON = postJSON;
+
+exports.emailConfig = async function (settings) {
+	if (Number(settings.uid) > 0 && await globalThis.nodebb.require('./src/database').getObjectField(`user:${settings.uid}`, 'uniportalId')) {
+		settings.emailPrompt = 0;
+	}
+	return settings;
+};
+
+let accessControl;
+function access() {
+	if (!accessControl) {
+		const nodebb = globalThis.nodebb;
+		accessControl = createAccessControl({ db: nodebb.require('./src/database'), user: nodebb.require('./src/user'), helpers: nodebb.require('./src/controllers/helpers'), sockets: nodebb.require('./src/socket.io'), relativePath: nodebb.require('nconf').get('relative_path') || '' });
+	}
+	return accessControl;
+}
+
+exports.init = async function ({ app }) {
+	if (app.uniportalSessionGate) { return; }
+	app.uniportalSessionGate = true;
+	app.use((req, res, next) => access().http(req, res, next));
+};
+exports.socketValidate = async data => access().socketValidate(data);
+exports.socketConnect = async data => access().socketConnect(data);

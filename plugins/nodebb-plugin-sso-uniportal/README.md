@@ -21,7 +21,7 @@
    本地 Node.js 24 路径和启动方法见根目录部署文档。
 4. 登录页增加企业登录按钮。设置 `UNIPORTAL_AUTO_LOGIN=true` 后，未登录访问首页或登录页
    会自动进入企业认证。管理员本地登录入口为 `/login?local=1`，认证失败也回到该入口，
-   避免自动认证循环。已登录用户不跳转；其他论坛页面的访客访问权限仍由 NodeBB 控制。
+   避免自动认证循环。登录有效期内不重复跳转。
 5. 本项目关闭 NodeBB 个人信息同意补充页：数据库配置 `gdpr_enabled=0`。
    企业登录仍正常保存身份、姓名及论坛必要记录，不自动写入 `gdpr_consent=1`。
    邮件摘要保持 `dailyDigestFreq=off`。这两项是论坛数据库配置，并非 `.env` 参数；
@@ -30,6 +30,25 @@
    重启后重新访问首页即可继续使用，不必删除账号或重新初始化。
 
 ## 行为和恢复
+
+- 企业账号不显示缺少邮箱或邮箱验证的前端提醒（`filter:config.get` 按企业身份返回 `emailPrompt=0`）。
+  当前论坛 `requireEmailAddress=0`，不要求企业用户绑定邮箱；不伪造邮箱或邮件已验证标记，
+  管理员本地账号原有提示及密码找回能力不变。新数据库部署也需保持 `requireEmailAddress=0`。
+
+- `UNIPORTAL_REQUIRE_LOGIN=true` 时，所有论坛页面、内容 API、用户上传文件均要求登录。
+  访客页面请求进入企业认证；API 和写入请求返回 401 及登录地址，不重放写入。
+  `/login?local=1`、本地登录接口、企业认证回调、CSRF 配置接口、公开静态资源及系统品牌图片保留访问。
+  `?local=1` 不能绕过主题或内容接口的校验。访客注册页也会进入企业认证；管理员及已有本地测试账号
+  保留原有本地密码登录能力和 NodeBB 会话规则。
+- 企业登录完成后，仅在 PostgreSQL 会话中保存匹配 UID、认证时间和绝对到期时间，不保存 token。
+  `UNIPORTAL_SESSION_TTL_SECONDS=1800` 表示论坛企业会话最多 30 分钟；如果 token 响应提供更短的
+  `expires_in`，使用更短时间。缺少该字段时使用配置上限，不推断 token 本身实际寿命。
+  浏览、发帖和“保持登录”不会延长这个到期时间。到期后撤销该会话并重新认证，其他设备会话不受影响。
+  此处是本地截止时间检查，不会每次请求调用企业平台，也不能在截止时间前检测 token 被平台提前撤销。
+- HTTP 与 WebSocket 均检查有效期；空闲 WebSocket 到期也断开。启用新策略前已存在且没有到期标记的
+  企业会话必须重新登录，不补发新的 30 分钟。管理员本地账号不套用企业 token 截止时间。
+  企业平台若仍有有效单点登录 Cookie，重新认证可能自动完成，不一定再次要求输入密码。
+  `UNIPORTAL_ENABLED=true` 且插件已启用时该策略才生效；部署时必须保留这些配置。
 
 - state 是 256 位随机数，数据库仅存其哈希及浏览器会话 ID 的哈希。
   跳转前先修改并保存 NodeBB 会话，确保 `saveUninitialized:false` 时新浏览器也会收到 Cookie。
@@ -41,9 +60,13 @@
   登录失败页显示对应阶段；服务日志只记录固定阶段标识（如 browser、token、profile、identity），
   不记录企业原始响应、账号、code、state 或 token。`uniportal=failed` 表示登录失败，
   不能据此认定企业登录已经成功。已有本地管理员会话不会被失败的企业认证替换。
-- 企业 UID 映射至独立的 NodeBB 数字 UID。用户名使用随机 `up-` 标识，
-  用户创建接口负责处理用户名冲突；真实姓名存为 fullname 并在每次登录同步。
+- 企业 UID 映射至独立的 NodeBB 数字 UID。当前接口的 `uid` 为企业登录账号，
+  直接作为论坛用户名（如 `l60118829`）；中文姓名存为 fullname 并作为显示名。
+  登录时通过 NodeBB 原生资料接口同步用户名和姓名。用户名冲突时拒绝操作，不自动绑定已有账户，
+  也不接受核心自动添加后缀的用户名。无效或超出论坛长度限制的登录账号需管理员处理。
   新建企业账号默认展示姓名；插件只为企业账号设置显示名，并遵守隐藏姓名设置。
+  旧版随机用户名可运行 `node --env-file=.env plugins/nodebb-plugin-sso-uniportal/migrate-usernames.js`
+  原地迁移；脚本核对身份映射并调用 NodeBB 改名接口，保留 UID、帖子和权限，遇到冲突即停止。
   不读取邮箱或头像，不按姓名/邮箱关联旧账户，不创建密码或授予管理员权限。
 - 使用 NodeBB Passport 回调链完成会话重建、验证钩子、登录跟踪及 WebSocket 通知。
   退出使用 NodeBB 原生退出，只清除论坛会话；企业单点退出尚未对接。
@@ -61,6 +84,7 @@
 
 ```powershell
 node --test plugins/nodebb-plugin-sso-uniportal/test.js
+node --test tests/session-policy.test.js
 ```
 
 测试包含真实本机 HTTP 往返：新会话发出 Cookie、携带 Cookie 的回调成功、

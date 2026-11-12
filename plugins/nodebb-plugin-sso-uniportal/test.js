@@ -18,13 +18,17 @@ function fixture() {
 		async incrObjectField(k, f) { const v = objects.get(k) || {}; v[f] = Number(v[f] || 0) + 1; objects.set(k, v); return v[f]; },
 	};
 	const user = {
+		async checkUsername(name) { if ([...users.values()].some(u => u.username.toLowerCase() === name.toLowerCase())) { throw new Error('username taken'); } },
 		async create(data, opts) { assert.equal(data.password, undefined); assert.equal(data.email, undefined); assert.equal(opts.emailVerification, 'skip'); const uid = ++created; users.set(uid, { ...data }); return uid; },
 		async setUserField(uid, k, v) { users.get(uid)[k] = v; },
 		async getUserField(uid, k) { return users.get(uid)?.[k]; },
 		async setSetting(uid, k, v) { users.get(uid)[k] = v; },
 		async exists(uid) { return users.has(uid); },
 		bans: { async unbanIfExpired() {} },
-		async updateProfile(uid, data) { Object.assign(users.get(uid), data); },
+		async updateProfile(uid, data) {
+			if (data.username && [...users.entries()].some(([id, u]) => id !== uid && u.username.toLowerCase() === data.username.toLowerCase())) { throw new Error('username taken'); }
+			Object.assign(users.get(uid), data);
+		},
 	};
 	const service = createService({ db, user, now: () => time, post: async () => (++posts % 2 ? { access_token: 'test' } : { uid: 'employee-1', displayName: 'cn=张三,ou=team' }) });
 	const c = { AUTHORIZE_URL: 'http://localhost/authorize', TOKEN_URL: 'http://localhost/token', USERINFO_URL: 'http://localhost/userinfo', REDIRECT_URI: 'http://localhost:9203/auth/uniportal/callback', client: 'token-client', authClient: 'auth-client', secret: 'test', scope: 'test' };
@@ -39,9 +43,27 @@ test('first login, concurrent callbacks, repeat login and name synchronization',
 	await f.service.identity({ uid: 'employee-1', displayNameCn: '李四' });
 	assert.equal(f.users.get(1).fullname, '李四');
 	assert.equal(f.users.get(1).uniportalId, 'employee-1');
+	assert.equal(f.users.get(1).username, 'employee-1');
 	assert.equal(f.users.get(1).administrator, undefined);
 	await f.service.identity({ uid: 'employee-2', displayNameCn: '李四' });
 	assert.equal(f.created(), 2);
+});
+
+test('legacy username is renamed in place and existing local username is never linked', async () => {
+	const f = fixture();
+	await f.service.identity({ uid: 'l60118829', displayNameCn: '企业姓名' });
+	f.users.get(1).username = 'up-legacy';
+	f.users.get(1).postcount = 42;
+	assert.deepEqual(await f.service.identity({ uid: 'l60118829', displayNameCn: '新姓名' }), { uid: 1 });
+	assert.equal(f.users.get(1).username, 'l60118829');
+	assert.equal(f.users.get(1).fullname, '新姓名');
+	assert.equal(f.users.get(1).postcount, 42);
+	assert.equal(f.created(), 1);
+	await f.user.create({ username: 'admin' }, { emailVerification: 'skip' });
+	await assert.rejects(f.service.identity({ uid: 'admin' }));
+	assert.equal(f.users.get(2).uniportalId, undefined);
+	assert.equal(f.created(), 2);
+	await assert.rejects(require('./library').validateUsername({ opts: { uniportal: true }, user: { username: 'l60118829 1' }, data: { username: 'l60118829' } }));
 });
 
 test('browser binding, atomic replay protection and expiry', async () => {
@@ -50,7 +72,7 @@ test('browser binding, atomic replay protection and expiry', async () => {
 	assert.equal(url.searchParams.get('client_id'), 'auth-client');
 	const query = { state: url.searchParams.get('state'), code: 'code' };
 	await assert.rejects(f.service.complete({ sessionID: 'other', query }, f.c), err => err.uniportalStage === 'browser');
-	const results = await Promise.allSettled([1, 2].map(() => f.service.complete({ sessionID: 'browser', query }, f.c)));
+	const results = await Promise.allSettled([1, 2].map(() => f.service.complete({ sessionID: 'browser', session: {}, query }, f.c)));
 	assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
 	const expired = new URL(await f.service.begin(browserRequest('browser'), f.c));
 	f.advance();
