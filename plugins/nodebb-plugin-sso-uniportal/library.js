@@ -224,3 +224,36 @@ exports.init = async function ({ app }) {
 };
 exports.socketValidate = async data => access().socketValidate(data);
 exports.socketConnect = async data => access().socketConnect(data);
+
+exports.clientHeader = async function (data) {
+	const auth = data.req.session?.uniportalAuth;
+	if (process.env.UNIPORTAL_ENABLED !== 'true' || process.env.UNIPORTAL_REQUIRE_LOGIN !== 'true' || Number(auth?.uid) !== Number(data.req.uid) || !Number.isFinite(auth?.expiresAt)) { return data; }
+	data.templateValues.config.uniportalSession = { uid: Number(auth.uid), expiresAt: auth.expiresAt, serverNow: Date.now() };
+	data.templateValues.configJSON = globalThis.nodebb.require('jsesc')(JSON.stringify(data.templateValues.config), { isScriptContext: true });
+	return data;
+};
+
+exports.navigationHeader = async function (data) {
+	const values = data.templateData || data.templateValues;
+	if (!values) { return data; }
+	// Brand artwork is not a square profile photo: fit the complete mark instead
+	// of stretching or clipping it with the theme's avatar presentation.
+	values.useCustomCSS = true;
+	values.customCSS = `${values.customCSS || ''}\n[data-nid] img.avatar[src*="/assets/brand/"], [data-nid] img.avatar[src*="/uploads/system/site-logo"] { width: 32px; height: 32px; max-width: 32px; object-fit: contain; object-position: center; border-radius: 0; flex-shrink: 0; }`;
+	const uid = Number(data.req.uid);
+	if (!(uid > 0) || values.user?.isAdmin || values.user?.isGlobalMod || values.user?.isMod) { return data; }
+	values.canChat = false;
+	// The mobile navbar combines notifications, chat and avatar into one button;
+	// hide only its chat icon, retaining notifications and account access.
+	values.customCSS += '\n#mobile-chats [component="chat/icon"], #logged-in-menu .chats { display: none !important; }';
+	if (!Array.isArray(values.navigation)) { return data; }
+	const nodebb = globalThis.nodebb;
+	if (!await nodebb.require('./src/database').getObjectField(`user:${uid}`, 'uniportalId')) { return data; }
+	const prefix = nodebb.require('nconf').get('relative_path') || '';
+	const hidden = new Set([`${prefix}/users`, `${prefix}/groups`]);
+	values.navigation = values.navigation.filter((item) => {
+		if (typeof item.route !== 'string' || !item.route.startsWith('/') || item.route.startsWith('//')) { return true; }
+		return !hidden.has(new URL(item.route, 'http://localhost').pathname.replace(/\/+$/, ''));
+	});
+	return data;
+};

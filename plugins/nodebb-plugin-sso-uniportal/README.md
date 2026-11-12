@@ -31,6 +31,11 @@
 
 ## 行为和恢复
 
+- OAuth2 普通用户隐藏前台“用户”和“群组”导航；管理员、版主及本地账号保持原有入口。
+  仅过滤用户看到的导航项，不改变群组成员、板块权限或直接访问链接的权限规则。
+- 普通用户隐藏顶部聊天入口（桌面及手机图标），保留管理员和版主入口；不修改聊天权限。
+  通知中的站点 Logo 使用 32px 容器和等比例完整显示，避免按方形头像拉伸或裁切，保留已有自定义样式。
+
 - 企业账号不显示缺少邮箱或邮箱验证的前端提醒（`filter:config.get` 按企业身份返回 `emailPrompt=0`）。
   当前论坛 `requireEmailAddress=0`，不要求企业用户绑定邮箱；不伪造邮箱或邮件已验证标记，
   管理员本地账号原有提示及密码找回能力不变。新数据库部署也需保持 `requireEmailAddress=0`。
@@ -49,6 +54,11 @@
   企业会话必须重新登录，不补发新的 30 分钟。管理员本地账号不套用企业 token 截止时间。
   企业平台若仍有有效单点登录 Cookie，重新认证可能自动完成，不一定再次要求输入密码。
   `UNIPORTAL_ENABLED=true` 且插件已启用时该策略才生效；部署时必须保留这些配置。
+- 企业会话到期时，前端自动通过完整页面跳转进入 `/auth/uniportal`，不再要求点击通用“刷新”提示。
+  页面计时、WebSocket 专用事件和带 `X-Uniportal-Login` 标记的 API 401 都触发同一跳转，
+  403 权限错误及管理员自己的重新验证不受影响。返回后台标签页时也重新检查期限。
+  跳转前将当前编辑器正文等保存到 NodeBB 原生浏览器草稿（需浏览器允许本地存储）；
+  不自动重试或重新提交发帖、回复请求。新增前端脚本后必须构建并重启，已有页面需强制刷新。
 
 - state 是 256 位随机数，数据库仅存其哈希及浏览器会话 ID 的哈希。
   跳转前先修改并保存 NodeBB 会话，确保 `saveUninitialized:false` 时新浏览器也会收到 Cookie。
@@ -85,6 +95,7 @@
 ```powershell
 node --test plugins/nodebb-plugin-sso-uniportal/test.js
 node --test tests/session-policy.test.js
+node --test tests/session-redirect.test.js
 ```
 
 测试包含真实本机 HTTP 往返：新会话发出 Cookie、携带 Cookie 的回调成功、

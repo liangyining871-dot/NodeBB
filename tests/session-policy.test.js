@@ -86,7 +86,7 @@ test('enterprise sessions expire at the exact boundary; legacy and mismatched se
 	assert.equal(expired.uid, 0);
 	assert.equal(expired.user, undefined);
 	assert.deepEqual(f.revoked[0], { sid: 'session', uid: 2 });
-	assert.ok(f.notices.some(n => n.event === 'event:invalid_session'));
+	assert.ok(f.notices.some(n => n.event === 'event:uniportal.expired'));
 	assert.equal((await f.run(f.req('/topic/3', 2))).status, 307);
 	assert.equal((await f.run(f.req('/topic/3', 2, { uid: 1, expiresAt: 3000 }))).status, 307);
 	assert.equal((await f.run(f.req('/login?local=1', 2))).next, true);

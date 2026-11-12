@@ -31,7 +31,7 @@ function createAccessControl({ db, user, helpers, sockets, env = process.env, no
 	async function revoke(sid, uid) {
 		if (sid) { await user.auth.revokeSession(sid, Number(uid)); }
 		const room = sid && sockets.server?.in(`sess_${sid}`);
-		room?.emit('event:invalid_session');
+		room?.emit('event:uniportal.expired');
 		room?.disconnectSockets(true);
 	}
 	function pathname(req) {
@@ -65,6 +65,7 @@ function createAccessControl({ db, user, helpers, sockets, env = process.env, no
 			const loginUrl = `${relativePath}/auth/uniportal`;
 			res.set('Cache-Control', 'no-store');
 			if (p === '/api' || p.startsWith('/api/') || !['GET', 'HEAD'].includes(req.method)) {
+				res.set('X-Uniportal-Login', loginUrl);
 				return res.status(401).json({ status: { code: 'not-authenticated', message: 'Login required or enterprise session expired' }, response: { loginUrl } });
 			}
 			return helpers.redirect(res, { external: '/auth/uniportal' });
@@ -74,20 +75,20 @@ function createAccessControl({ db, user, helpers, sockets, env = process.env, no
 		if (!active()) { return; }
 		const uid = session?.passport?.user;
 		if (Number(socket.uid) === Number(uid) && await valid(uid, session)) { return; }
-		socket.emit('event:invalid_session');
+		socket.emit('event:uniportal.expired');
 		socket.disconnect(true);
-		throw new Error('[[error:invalid-session]]');
+		throw new Error('[[error:revalidate-failure]]');
 	}
 	async function socketConnect({ socket }) {
 		if (!active()) { return; }
 		try {
 			const session = socket.request.session;
-			if (!await valid(socket.uid, session)) { socket.emit('event:invalid_session'); socket.disconnect(true); return; }
+			if (!await valid(socket.uid, session)) { socket.emit('event:uniportal.expired'); socket.disconnect(true); return; }
 			const auth = session?.uniportalAuth;
 			if (!auth) { return; }
 			const sid = socket.request.signedCookies?.[require('nconf').get('sessionKey')];
 			const timer = schedule(() => {
-				revoke(sid, socket.uid).catch(() => {}).finally(() => { socket.emit('event:invalid_session'); socket.disconnect(true); });
+				revoke(sid, socket.uid).catch(() => {}).finally(() => { socket.emit('event:uniportal.expired'); socket.disconnect(true); });
 			}, Math.max(1, auth.expiresAt - now()));
 			timer.unref?.();
 			socket.once('disconnect', () => unschedule(timer));
