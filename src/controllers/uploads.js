@@ -42,6 +42,12 @@ uploadsController.uploadPost = async function (req, res) {
 	await uploadsController.upload(req, res, async (uploadedFile) => {
 		const detected = await fileTypeFromFile(uploadedFile.path);
 		const isImage = detected && detected.mime.startsWith('image/');
+		// 帖子附件单独扩展，避免私有存储插件同时接管头像、封面等上传。
+		if (plugins.hooks.hasListeners('filter:uploadPostFile')) {
+			return await plugins.hooks.fire('filter:uploadPostFile', {
+				file: uploadedFile, uid: req.uid, detected,
+			});
+		}
 		if (isImage) {
 			return await uploadAsImage(req, uploadedFile);
 		}
