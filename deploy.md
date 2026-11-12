@@ -1,18 +1,14 @@
 # 本文件仅做运行及部署介绍，，不涉及这两项时不要随意修改 
 
 # 蓝区本地运行（nodebb要求Node.js版本与本机不一致，额外下了一个对应版本）
-# 1. 当前终端切换到 Node.js 24
+# 当前终端切换到 Node.js 24
 $env:Path = "D:\software\workspace\developTools\node-v24.22.2-win-x64;" + $env:Path
-# 2. 进入项目
-cd D:\software\workspace\code\ai\nodebb1111\NodeBB
-# 3. 首次初始化，按提示确认配置并填写管理员信息
+# 首次初始化，按提示确认配置并填写管理员信息
 node --env-file=.env .\nodebb setup --dev
-# 4. 初始化成功后启动
+# 初始化成功后启动
 node --env-file=.env .\nodebb dev
 
-# NodeBB 构建部署
-使用 `docker-compose-pgsql.yml`，一个容器、一个 NodeBB 工作进程，端口 `9203`。连接现有 PostgreSQL 16 的独立 `nodebb` 数据库，不另外部署数据库。
-注意：当前 Compose 仍声明了 PostgreSQL 和可选 Redis 服务，以下命令通过指定 `nodebb` 和 `--no-deps` 只运行论坛。不要直接执行不带服务名的 `up`。
+# 需要修改主题的情况：目前可在管理员页面中修改，然后重新Build，为防止黄区网络问题导致Build失败。需在蓝区的镜像中准备好对应资源，黄区使用的对应数据库中，需要制定蓝区构建奖项是对应的主题；
 
 ## 蓝区：构建并导出
 固定项目名为 `nodebb`，Compose 生成的镜像名为 `nodebb-nodebb:latest`：
