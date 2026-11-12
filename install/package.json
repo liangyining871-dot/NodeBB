@@ -10,6 +10,7 @@
     },
     "main": "app.js",
     "scripts": {
+        "postinstall": "node scripts/patch-lavender.js",
         "start": "node loader.js",
         "lint": "eslint --cache ./nodebb .",
         "test": "nyc --reporter=html --reporter=text-summary mocha",
