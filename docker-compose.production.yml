@@ -1,0 +1,88 @@
+name: nodebb
+
+services:
+  nodebb:
+    container_name: nodebb
+    image: nodebb-nodebb:latest 
+    pull_policy: never
+    restart: unless-stopped
+    stop_grace_period: 30s
+    ports:
+      - '9203:9203'
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Shanghai
+      CONFIG_DIR: /opt/config
+      url: 'http://aixsilicon.developers.hisilicon.com:9203'
+      port: '9203'
+      PORT: '9203'
+      bind_address: '0.0.0.0'
+      database: postgres
+      postgres__host: 'host.docker.internal'
+      postgres__port: '9010'
+      postgres__database: 'nodebb'
+      postgres__username: 'aixsilicon'
+      postgres__password: '123456'
+      postgres__ssl: 'false'
+
+      INITIAL_APPEARANCE_SNAPSHOT: /usr/src/app/install/docker/appearance.snapshot.json
+
+      MINIO_ENDPOINT: 'host.docker.internal'
+      MINIO_PORT: '9016'
+      MINIO_USE_SSL: 'false'
+      MINIO_ACCESS_KEY: 'aixsilicon'
+      MINIO_SECRET_KEY: 'aixsilicon123456'
+      MINIO_BUCKET: 'nodebb-attachments'
+      MINIO_REGION: '' 
+
+
+      UNIPORTAL_ENABLED: 'false'
+      UNIPORTAL_AUTO_LOGIN: 'false'
+      UNIPORTAL_REQUIRE_LOGIN: 'true'
+      UNIPORTAL_SESSION_TTL_SECONDS: '1800'
+      UNIPORTAL_AUTHORIZE_URL: 'https://uniportal.huawei.com/saaslogin1/oauth2/authorize'
+      UNIPORTAL_TOKEN_URL: 'https://uniportal.huawei.com/saaslogin1/oauth2/accesstoken'
+      UNIPORTAL_USERINFO_URL: 'https://uniportal.huawei.com/saaslogin1/oauth2/userinfo'
+      UNIPORTAL_CLIENT_ID: 'com.huawei.socgenerator'
+      UNIPORTAL_AUTH_CLIENT_ID: 'com.huawei.socgenerator'
+      UNIPORTAL_CLIENT_SECRET: 'socgenerator'
+      UNIPORTAL_SCOPE: 'base.profile'
+      UNIPORTAL_REDIRECT_URI: 'http://aixsilicon.developers.hisilicon.com:9203/auth/uniportal/callback'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    networks: [nodebb]
+    volumes:
+      - type: bind
+        source: /data/aixsilicon/nodebb/.docker/config
+        target: /opt/config
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /data/aixsilicon/nodebb/.docker/public/uploads
+        target: /usr/src/app/public/uploads
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /data/aixsilicon/nodebb/.docker/build
+        target: /usr/src/app/build
+        bind:
+          create_host_path: false
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:9203/', {redirect:'manual', signal:AbortSignal.timeout(5000)}).then(r=>process.exit(r.status>=200 && r.status<400 ? 0 : 1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+networks:
+  nodebb:
+    driver: bridge
