@@ -10,9 +10,16 @@ const topics = require('../topics');
 const privileges = require('../privileges');
 const plugins = require('../plugins');
 const batch = require('../batch');
-const utils = require('../utils');
 
 module.exports = function (Categories) {
+	const recentUpdates = new Map();
+	async function serializeRecentUpdate(cid, operation) {
+		const key = String(cid);
+		const previous = recentUpdates.get(key) || Promise.resolve();
+		const current = previous.catch(() => {}).then(operation);
+		recentUpdates.set(key, current);
+		try { return await current; } finally { if (recentUpdates.get(key) === current) { recentUpdates.delete(key); } }
+	}
 	Categories.getRecentReplies = async function (cid, uid, start, stop) {
 		// backwards compatibility, treat start as count
 		if (stop === undefined && start > 0) {
@@ -26,22 +33,47 @@ module.exports = function (Categories) {
 	};
 
 	Categories.updateRecentTid = async function (cid, tid) {
-		const [count, numRecentReplies] = await Promise.all([
-			db.sortedSetCard(`cid:${cid}:recent_tids`),
-			db.getObjectField(`${utils.isNumber(cid) ? 'category' : 'categoryRemote'}:${cid}`, 'numRecentReplies'),
-		]);
-
-		if (count >= numRecentReplies) {
-			const data = await db.getSortedSetRangeWithScores(`cid:${cid}:recent_tids`, 0, count - numRecentReplies);
-			const shouldRemove = !(data.length === 1 && count === 1 && data[0].value === String(tid));
-			if (data.length && shouldRemove) {
-				await db.sortedSetsRemoveRangeByScore([`cid:${cid}:recent_tids`], '-inf', data[data.length - 1].score);
+		return serializeRecentUpdate(cid, async () => {
+			const key = `cid:${cid}:recent_tids`;
+			const limit = Number(await Categories.getCategoryField(cid, 'numRecentReplies'));
+			if (limit > 0) {
+				// Insert first so a reply to an already-listed topic does not evict
+				// another topic and unexpectedly shrink the preview list.
+				await db.sortedSetAdd(key, Date.now(), tid);
 			}
-		}
-		if (numRecentReplies > 0) {
-			await db.sortedSetAdd(`cid:${cid}:recent_tids`, Date.now(), tid);
-		}
-		await plugins.hooks.fire('action:categories.updateRecentTid', { cid: cid, tid: tid });
+			const count = await db.sortedSetCard(key);
+			if (count > Math.max(0, limit || 0)) {
+				const oldest = await db.getSortedSetRange(key, 0, count - Math.max(0, limit || 0) - 1);
+				await db.sortedSetRemove(key, oldest);
+			}
+			await plugins.hooks.fire('action:categories.updateRecentTid', { cid: cid, tid: tid });
+		});
+	};
+
+	Categories.rebuildRecentTids = async function (cid) {
+		return serializeRecentUpdate(cid, async () => {
+			const key = `cid:${cid}:recent_tids`;
+			const limit = Math.max(0, Number(await Categories.getCategoryField(cid, 'numRecentReplies')) || 0);
+			const entries = [];
+			for (let start = 0; entries.length < limit; start += 100) {
+				// eslint-disable-next-line no-await-in-loop
+				const candidates = await db.getSortedSetRevRangeWithScores(`cid:${cid}:tids:lastposttime`, start, start + 99);
+				if (!candidates.length) { break; }
+				// eslint-disable-next-line no-await-in-loop
+				const data = await topics.getTopicsFields(candidates.map(t => t.value), ['tid', 'deleted', 'scheduled']);
+				candidates.forEach((entry, index) => {
+					if (entries.length < limit && data[index]?.tid && !data[index].deleted && !data[index].scheduled) {
+						entries.push(entry);
+					}
+				});
+				if (candidates.length < 100) { break; }
+			}
+			const existing = await db.getSortedSetRange(key, 0, -1);
+			if (entries.length) { await db.sortedSetAdd(key, entries.map(t => t.score), entries.map(t => t.value)); }
+			const keep = new Set(entries.map(t => String(t.value)));
+			const remove = existing.filter(tid => !keep.has(String(tid)));
+			if (remove.length) { await db.sortedSetRemove(key, remove); }
+		});
 	};
 
 	Categories.updateRecentTidForCid = async function (cid) {

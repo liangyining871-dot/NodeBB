@@ -48,7 +48,14 @@ module.exports = function (Categories) {
 	}
 
 	async function updateCategoryField(cid, key, value) {
-		if (key === 'parentCid') {
+		if (key === 'numRecentReplies') {
+			const count = Number(value);
+			if (!['string', 'number'].includes(typeof value) || !Number.isSafeInteger(count) || count < 0) {
+				throw new Error('[[error:invalid-data]]');
+			}
+			await Categories.setCategoryField(cid, key, count);
+			return await Categories.rebuildRecentTids(cid);
+		} else if (key === 'parentCid') {
 			return await updateParent(cid, value);
 		} else if (key === 'tagWhitelist') {
 			return await updateTagWhitelist(cid, value);
@@ -142,6 +149,15 @@ module.exports = function (Categories) {
 	}
 
 	async function updateHandle(cid, handle) {
+		if (typeof handle !== 'string') {
+			throw new Error('[[error:invalid-data]]');
+		}
+		handle = handle.trim();
+		// A cleared optional form field must not erase an existing category handle
+		// or pass an empty value to the shared slug uniqueness check.
+		if (!handle) {
+			return;
+		}
 		const existing = await Categories.getCategoryField(cid, 'handle');
 		if (existing === handle) {
 			return;
