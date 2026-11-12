@@ -15,5 +15,5 @@
     { "hook": "filter:users.get", "method": "displayUsers" },
     { "hook": "filter:user.create", "method": "validateUsername" }
   ],
-  "scripts": [ "static/session.js" ]
+  "scripts": [ "static/session.js", "static/account-menu.js" ]
 }
