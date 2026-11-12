@@ -1,3 +1,5 @@
+# 本文件仅做运行及部署介绍，，不涉及这两项时不要随意修改 
+
 # 蓝区本地运行（nodebb要求Node.js版本与本机不一致，额外下了一个对应版本）
 # 1. 当前终端切换到 Node.js 24
 $env:Path = "D:\software\workspace\developTools\node-v24.22.2-win-x64;" + $env:Path
@@ -72,14 +74,5 @@ docker compose -p nodebb -f docker-compose-pgsql.yml logs -f --tail 100 nodebb
 docker load -i docker_images/nodebb.tar
 docker compose -p nodebb -f docker-compose-pgsql.yml up -d --no-build --no-deps --force-recreate nodebb
 ```
-
 更新时保留 `.docker`，不要重新执行首次初始化。
-# 企业 Uniportal 登录开发
 
-插件源码、配置说明和联调验收清单见
-[plugins/nodebb-plugin-sso-uniportal/README.md](plugins/nodebb-plugin-sso-uniportal/README.md)。
-`install/package.json` 已声明本地插件依赖。现有论坛仅需安装并启用插件、填写环境变量和重启，
-不要重新执行 setup 或重初始化数据库。企业登录验证完成前保留管理员和本地登录。
-
-`.env.example` 中企业 OAuth2 默认关闭；端点、客户端参数及回调白名单需按本应用确认。
-本轮未变更 Docker 入口、compose 和论坛权限，离线镜像部署另行处理。
