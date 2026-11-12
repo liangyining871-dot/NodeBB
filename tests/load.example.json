@@ -1,0 +1,11 @@
+{
+  "baseUrl": "http://127.0.0.1:9203",
+  "users": 10,
+  "durationSeconds": 30,
+  "thinkTimeMs": 1000,
+  "timeoutMs": 10000,
+  "endpoints": [
+    { "path": "/api/categories", "arrayField": "categories" },
+    { "path": "/api/recent", "arrayField": "topics" }
+  ]
+}
