@@ -16,7 +16,29 @@ graceful.gracefulify(fs);
 
 const file = module.exports;
 
-file.saveFileToLocal = async function (filename, folder, tempPath, { unique = false } = {}) {
+// 存储插件只接管上传目录；临时文件和程序内置资源继续使用文件系统。
+file.storage = async function (operation, filePath, data = {}) {
+	return await require('./plugins').hooks.fire('filter:files.storage', { operation, path: filePath, ...data, handled: false });
+};
+
+file.readBuffer = async function (filePath) {
+	const stored = await file.storage('read', filePath);
+	return stored.handled ? stored.result : await fs.promises.readFile(filePath);
+};
+
+file.writeBuffer = async function (filePath, buffer, resource) {
+	const stored = await file.storage('save', filePath, { buffer: Buffer.from(buffer), resource });
+	if (stored.handled) { return stored.result; }
+	await mkdirp(path.dirname(filePath));
+	await fs.promises.writeFile(filePath, buffer);
+};
+
+file.createFolder = async function (filePath) {
+	const stored = await file.storage('mkdir', filePath);
+	if (!stored.handled) { await fs.promises.mkdir(filePath, { recursive: true }); }
+};
+
+file.saveFileToLocal = async function (filename, folder, tempPath, { unique = false, resource } = {}) {
 	/*
 	 * remarkable doesn't allow spaces in hyperlinks, once that's fixed, remove this.
 	 */
@@ -27,7 +49,6 @@ file.saveFileToLocal = async function (filename, folder, tempPath, { unique = fa
 		throw new Error('[[error:invalid-path]]');
 	}
 
-	await mkdirp(path.dirname(uploadPath));
 	const extension = path.extname(filename).toLowerCase();
 	if (extension === '.svg') {
 		await sanitizeSvg(tempPath);
@@ -36,6 +57,9 @@ file.saveFileToLocal = async function (filename, folder, tempPath, { unique = fa
 	}
 	// avoid overwriting the original file when stripResized() changes the filename.
 	const preventOverwrite = unique || filename !== slugified;
+	const stored = await file.storage('save', uploadPath, { tempPath, unique: preventOverwrite, resource });
+	if (stored.handled) { return stored.result; }
+	await mkdirp(path.dirname(uploadPath));
 	if (preventOverwrite) {
 		uploadPath = await copyFileWithUniqueName(tempPath, uploadPath);
 		filename = path.basename(uploadPath);
@@ -88,9 +112,7 @@ file.base64ToLocal = async function (imageData, uploadPath) {
 	const buffer = Buffer.from(imageData.slice(imageData.indexOf('base64') + 7), 'base64');
 	uploadPath = path.join(nconf.get('upload_path'), uploadPath);
 
-	await fs.promises.writeFile(uploadPath, buffer, {
-		encoding: 'base64',
-	});
+	await file.writeBuffer(uploadPath, buffer);
 	return uploadPath;
 };
 
@@ -141,6 +163,8 @@ function parseExtensions(input) {
 }
 
 file.exists = async function (path) {
+	const stored = await file.storage('stat', path);
+	if (stored.handled) { return Boolean(stored.result); }
 	try {
 		await fs.promises.stat(path);
 	} catch (err) {
@@ -169,6 +193,8 @@ file.delete = async function (path) {
 	if (!path) {
 		return;
 	}
+	const stored = await file.storage('delete', path);
+	if (stored.handled) { return; }
 	try {
 		await fs.promises.unlink(path);
 	} catch (err) {
@@ -222,7 +248,11 @@ file.walk = async function (dir) {
 
 async function sanitizeSvg(filePath) {
 	const dirty = await fs.promises.readFile(filePath, 'utf8');
-	const clean = sanitizeHtml(dirty, {
+	await fs.promises.writeFile(filePath, file.sanitizeSvgData(dirty));
+}
+
+file.sanitizeSvgData = function (dirty) {
+	return sanitizeHtml(dirty, {
 		allowedTags: [
 			'svg', 'g', 'defs', 'linearGradient', 'radialGradient', 'stop',
 			'circle', 'ellipse', 'polygon', 'polyline', 'path', 'rect',
@@ -252,8 +282,7 @@ async function sanitizeSvg(filePath) {
 			lowerCaseAttributeNames: false,
 		},
 	});
-	await fs.promises.writeFile(filePath, clean);
-}
+};
 
 const FORBIDDEN = new Set([
 	'script', 'iframe', 'object', 'embed',

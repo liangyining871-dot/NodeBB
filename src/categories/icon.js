@@ -8,6 +8,7 @@ const sharp = require('sharp');
 const wawoff2 = require('wawoff2');
 
 const utils = require('../utils');
+const file = require('../file');
 
 const categories = module.parent.exports;
 const Icons = module.exports;
@@ -19,9 +20,7 @@ Icons._constants = Object.freeze({
 Icons.get = async (cid) => {
 	try {
 		const paths = Icons._constants.extensions.map(extension => path.resolve(nconf.get('upload_path'), 'category', `category-${cid}-icon.${extension}`));
-		await Promise.all(paths.map(async (path) => {
-			await fs.access(path);
-		}));
+		if (!(await Promise.all(paths.map(file.exists))).every(Boolean)) { throw new Error('图标尚未生成'); }
 
 		return new Map(Object.entries({
 			svg: `${nconf.get('upload_url')}/category/category-${cid}-icon.svg`,
@@ -35,7 +34,7 @@ Icons.get = async (cid) => {
 Icons.flush = async (cid) => {
 	const paths = Icons._constants.extensions.map(extension => path.resolve(nconf.get('upload_path'), 'category', `category-${cid}-icon.${extension}`));
 
-	await Promise.all(paths.map((async path => await fs.rm(path, { force: true }))));
+	await Promise.all(paths.map(file.delete));
 };
 
 Icons.regenerate = async (cid) => {
@@ -95,14 +94,14 @@ Icons.regenerate = async (cid) => {
 			style: 'normal',
 		}],
 	});
-	await fs.writeFile(path.resolve(nconf.get('upload_path'), 'category', `category-${cid}-icon.svg`), svg);
+	await file.writeBuffer(path.resolve(nconf.get('upload_path'), 'category', `category-${cid}-icon.svg`), svg);
 
 	// Generate and save PNG
 	const pngBuffer = await sharp(Buffer.from(svg))
 		.png()
 		.toBuffer();
 
-	await fs.writeFile(path.resolve(nconf.get('upload_path'), 'category', `category-${cid}-icon.png`), pngBuffer);
+	await file.writeBuffer(path.resolve(nconf.get('upload_path'), 'category', `category-${cid}-icon.png`), pngBuffer);
 
 	return new Map(Object.entries({
 		svg: `${nconf.get('upload_url')}/category/category-${cid}-icon.svg`,

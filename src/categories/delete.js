@@ -22,6 +22,7 @@ module.exports = function (Categories) {
 		await db.sortedSetRemove(`cid:${cid}:tids:pinned`, pinnedTids);
 
 		const categoryData = await Categories.getCategoryData(cid);
+		await plugins.hooks.fire('filter:category.purge', { cid, uid });
 		await purgeCategory(cid, categoryData);
 		plugins.hooks.fire('action:category.delete', { cid: cid, uid: uid, category: categoryData });
 	};

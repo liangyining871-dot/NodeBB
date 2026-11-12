@@ -42,13 +42,14 @@ module.exports = function (Groups) {
 				type = imageData.mime;
 			}
 
-			await deleteCover(data.groupName);
+			const previous = await Groups.getGroupFields(data.groupName, ['cover:url', 'cover:thumb:url']);
 
 			const filename = `groupCover-${data.groupName}-${Date.now()}${path.extname(tempPath)}`;
 			const uploadData = await image.uploadImage(filename, 'files', {
 				path: tempPath,
 				uid: uid,
 				name: 'groupCover',
+				resource: { scope: 'group', owner: data.groupName, type: 'group-cover' },
 			});
 
 			await image.resizeImage({
@@ -61,6 +62,7 @@ module.exports = function (Groups) {
 				path: tempPath,
 				uid: uid,
 				name: 'groupCover',
+				resource: { scope: 'group', owner: data.groupName, type: 'group-cover-thumbnail' },
 			});
 
 			await Groups.setGroupFields(data.groupName, {
@@ -68,10 +70,11 @@ module.exports = function (Groups) {
 				'cover:thumb:url': thumbUploadData.url,
 				...(data.position ? { 'cover:position': data.position } : {}),
 			});
+			await deleteCover(data.groupName, previous);
 
 			return { url: uploadData.url };
 		} finally {
-			file.delete(tempPath);
+			await file.delete(tempPath);
 		}
 	};
 
@@ -80,14 +83,14 @@ module.exports = function (Groups) {
 		await db.deleteObjectFields(`group:${data.groupName}`, ['cover:url', 'cover:thumb:url', 'cover:position']);
 	};
 
-	async function deleteCover(groupName) {
+	async function deleteCover(groupName, previous) {
 		const fields = ['cover:url', 'cover:thumb:url'];
-		const values = await Groups.getGroupFields(groupName, fields);
+		const values = previous || await Groups.getGroupFields(groupName, fields);
 		await Promise.all(fields.map(async (field) => {
 			if (!values[field] || !values[field].startsWith(`${nconf.get('relative_path')}/assets/uploads/files/`)) {
 				return;
 			}
-			const filename = values[field].split('/').pop();
+			const filename = decodeURIComponent(values[field].split('/').pop());
 			const filePath = path.join(nconf.get('upload_path'), 'files', filename);
 			if (file.isPathInside(nconf.get('upload_path'), filePath)) {
 				await file.delete(filePath);

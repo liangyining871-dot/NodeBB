@@ -45,7 +45,7 @@ image.resizeImage = async function (data) {
 		});
 	} else {
 		const sharp = requireSharp();
-		const buffer = await fs.promises.readFile(data.path);
+		const buffer = await file.readBuffer(data.path);
 		const sharpImage = sharp(buffer, {
 			failOn: 'error',
 			animated: data.type === 'image/gif',
@@ -78,7 +78,13 @@ image.resizeImage = async function (data) {
 			}
 		}
 
-		await sharpImage.toFile(data.target || data.path);
+		const target = data.target || data.path;
+		const stored = await file.storage('target', target);
+		if (stored.handled) {
+			await file.writeBuffer(target, await sharpImage.toBuffer(), data.resource);
+		} else {
+			await sharpImage.toFile(target);
+		}
 	}
 };
 
@@ -95,6 +101,11 @@ image.normalise = async function (path) {
 };
 
 image.size = async function (path) {
+	const stored = await file.storage('stat', path);
+	if (stored.handled) {
+		if (!stored.result) { throw new Error('[[error:invalid-file]]'); }
+		return { width: stored.result.width, height: stored.result.height };
+	}
 	let imageData;
 	if (plugins.hooks.hasListeners('filter:image.size')) {
 		imageData = await plugins.hooks.fire('filter:image.size', {
@@ -184,7 +195,7 @@ image.uploadImage = async function (filename, folder, imageData) {
 		});
 	}
 	await image.isFileTypeAllowed(imageData.path);
-	const upload = await file.saveFileToLocal(filename, folder, imageData.path);
+	const upload = await file.saveFileToLocal(filename, folder, imageData.path, { resource: imageData.resource });
 	return {
 		url: upload.url,
 		path: upload.path,

@@ -41,7 +41,7 @@ module.exports = function (Categories) {
 		}
 
 		if (['icon', 'color', 'bgColor'].some(prop => Object.keys(modifiedFields).includes(prop))) {
-			Categories.icons.flush(cid);
+			await Categories.icons.flush(cid);
 		}
 
 		plugins.hooks.fire('action:category.update', { cid: cid, modified: category });

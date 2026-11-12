@@ -256,6 +256,14 @@ function setupHelmet(app) {
 
 
 function setupFavicon(app) {
+	const custom = meta.config['brand:favicon'];
+	if (custom && custom.includes('/assets/uploads/')) {
+		const relativePath = nconf.get('relative_path');
+		app.get(`${relativePath}/favicon.ico`, (req, res) => {
+			res.redirect(relativePath && !custom.startsWith(`${relativePath}/`) ? relativePath + custom : custom);
+		});
+		return;
+	}
 	let faviconPath = meta.config['brand:favicon'] || 'favicon.ico';
 	faviconPath = path.join(nconf.get('base_dir'), 'public', faviconPath.replace(/assets\/uploads/, 'uploads'));
 	if (!file.isPathInside(nconf.get('upload_path'), faviconPath)) {

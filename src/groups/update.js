@@ -227,6 +227,7 @@ module.exports = function (Groups) {
 		await renameGroupsMember(['groups:createtime', 'groups:visible:createtime', 'groups:visible:memberCount'], oldName, newName);
 		await renameGroupsMember(['groups:visible:name'], `${oldName.toLowerCase()}:${oldName}`, `${newName.toLowerCase()}:${newName}`);
 
+		await plugins.hooks.fire('filter:group.renamed', { old: oldName, new: newName });
 		plugins.hooks.fire('action:group.rename', {
 			old: oldName,
 			new: newName,

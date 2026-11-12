@@ -27,9 +27,16 @@ uploadsController.get = async function (req, res, next) {
 	const itemsPerPage = 20;
 	const page = parseInt(req.query.page, 10) || 1;
 	let files;
+	let remoteFiles;
 	try {
-		await checkSymLinks(req.query.dir);
-		files = await getFilesInFolder(currentFolder);
+		const stored = await file.storage('list', currentFolder);
+		if (stored.handled) {
+			remoteFiles = stored.result;
+			files = remoteFiles.map(file => file.name);
+		} else {
+			await checkSymLinks(req.query.dir);
+			files = await getFilesInFolder(currentFolder);
+		}
 	} catch (err) {
 		winston.error(err.stack);
 		return next(new Error('[[error:invalid-path]]'));
@@ -40,7 +47,7 @@ uploadsController.get = async function (req, res, next) {
 		const stop = start + itemsPerPage;
 		files = files.slice(start, stop);
 
-		files = await filesToData(currentFolder, files);
+		files = remoteFiles ? remoteFiles.slice(start, stop) : await filesToData(currentFolder, files);
 
 		// Float directories to the top
 		files.sort((a, b) => {
@@ -295,7 +302,7 @@ async function uploadImage(filename, folder, uploadedFile, req) {
 			target: uploadPath,
 			height: 50,
 		});
-		await meta.configs.set('brand:emailLogo', path.join(nconf.get('upload_url'), 'system/site-logo-x50.png'));
+		await meta.configs.set('brand:emailLogo', `${nconf.get('upload_url')}/system/site-logo-x50.png`);
 		const size = await image.size(uploadedFile.path);
 		await meta.configs.setMultiple({
 			'brand:logo:width': size.width,

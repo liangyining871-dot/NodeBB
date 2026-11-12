@@ -1,7 +1,6 @@
 'use strict';
 
 const path = require('path');
-const fs = require('fs').promises;
 const nconf = require('nconf');
 const mime = require('mime').default;
 const winston = require('winston');
@@ -9,6 +8,7 @@ const winston = require('winston');
 const db = require('../database');
 const validator = require('validator');
 const request = require('../request');
+const file = require('../file');
 
 const emojiLookupKey = 'emoji:ap:lookup';
 
@@ -125,7 +125,7 @@ async function cacheEmoji(emojiTag) {
 
 	try {
 		// Ensure directory exists
-		await fs.mkdir(dirPath, { recursive: true });
+		await file.createFolder(dirPath);
 
 		// Fetch the remote image through the SSRF-protected request layer. This
 		// pins DNS to the already-validated address (no rebind TOCTOU),
@@ -143,7 +143,7 @@ async function cacheEmoji(emojiTag) {
 			return null;
 		}
 
-		await fs.writeFile(localPath, buffer);
+		await file.writeBuffer(localPath, buffer);
 
 		const mediaType = icon.mediaType || mime.getType(ext) || 'image/png';
 		// Store path relative to upload_path so it survives installation moves

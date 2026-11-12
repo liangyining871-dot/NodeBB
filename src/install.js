@@ -588,7 +588,7 @@ async function copyFavicon() {
 
 	if (defaultExists && !targetExists) {
 		try {
-			await fs.promises.copyFile(defaultIco, pathToIco);
+			await file.writeBuffer(pathToIco, await fs.promises.readFile(defaultIco));
 		} catch (err) {
 			winston.error(`Cannot copy favicon.ico\n${err.stack}`);
 		}

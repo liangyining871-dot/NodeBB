@@ -168,11 +168,11 @@ module.exports = function (User) {
 			];
 
 			await db.sortedSetRemoveBulk(toRemove);
-			toDeleteImages.forEach((imagePath) => {
+			await Promise.all(toDeleteImages.map(async (imagePath) => {
 				if (imagePath && !imagePath.startsWith('http')) {
-					file.delete(imagePath);
+					await file.delete(imagePath);
 				}
-			});
+			}));
 		}
 		await db.sortedSetAdd(zsetKey, Date.now(), uploadedImage.url);
 		return { url: uploadedImage.url };
@@ -253,7 +253,7 @@ module.exports = function (User) {
 		if (!value || !value.startsWith(`${nconf.get('relative_path')}/assets/uploads/profile/uid-${uid}`)) {
 			return false;
 		}
-		const filename = value.split('/').pop();
+		const filename = decodeURIComponent(value.split('/').pop());
 		const resolved = path.join(nconf.get('upload_path'), `profile/uid-${uid}`, filename);
 		return file.isPathInside(nconf.get('upload_path'), resolved) ?
 			resolved :

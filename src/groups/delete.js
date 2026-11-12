@@ -17,6 +17,7 @@ module.exports = function (Groups) {
 		if (!groupsData.length) {
 			return;
 		}
+		await plugins.hooks.fire('filter:groups.destroy', { groupNames: groupsData.map(group => group.name) });
 		const keys = [];
 		groupNames.forEach((groupName) => {
 			keys.push(

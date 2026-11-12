@@ -146,6 +146,10 @@ middleware.routeTouchIcon = function routeTouchIcon(req, res) {
 	if (brandTouchIcon && validator.isURL(brandTouchIcon)) {
 		return res.redirect(brandTouchIcon);
 	}
+	if (brandTouchIcon && brandTouchIcon.includes('/assets/uploads/')) {
+		const relativePath = nconf.get('relative_path');
+		return res.redirect(relativePath && !brandTouchIcon.startsWith(`${relativePath}/`) ? relativePath + brandTouchIcon : brandTouchIcon);
+	}
 
 	let iconPath;
 	if (brandTouchIcon) {

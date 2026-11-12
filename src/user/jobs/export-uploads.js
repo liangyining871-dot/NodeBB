@@ -25,6 +25,9 @@ const db = require('../../database');
 process.on('message', async (msg) => {
 	if (msg && msg.uid) {
 		await db.init();
+		// 导出子进程也加载存储 Hook，避免把 MinIO 中的头像当成本地文件读取。
+		require('../../../nodebb-global');
+		await require('../../plugins').init();
 
 		const targetUid = msg.uid;
 
@@ -75,7 +78,8 @@ process.on('message', async (msg) => {
 		await user.collateUploads(targetUid, archive);
 
 		const profileUploadPath = path.join(nconf.get('upload_path'), `profile/uid-${targetUid}`);
-		archive.directory(profileUploadPath, 'profile');
+		const stored = await require('../../file').storage('export', profileUploadPath, { archive });
+		if (!stored.handled) { archive.directory(profileUploadPath, 'profile'); }
 		archive.finalize();
 	}
 });

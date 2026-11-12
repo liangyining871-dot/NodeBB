@@ -2,37 +2,18 @@
   "id": "nodebb-plugin-private-attachments",
   "name": "论坛私有附件",
   "hooks": [
-    {
-      "hook": "static:app.load",
-      "method": "init"
-    },
-    {
-      "hook": "filter:uploadPostFile",
-      "method": "uploadPostFile"
-    },
-    {
-      "hook": "filter:post.create",
-      "method": "preparePost"
-    },
-    {
-      "hook": "filter:post.edit",
-      "method": "preparePost"
-    },
-    {
-      "hook": "filter:posts.purge",
-      "method": "purge"
-    },
-    {
-      "hook": "filter:topic.thumb.associate",
-      "method": "associateThumb"
-    },
-    {
-      "hook": "filter:topics.hasThumbs",
-      "method": "hasThumbs"
-    },
-    {
-      "hook": "filter:topics.getThumbs",
-      "method": "getThumbs"
-    }
+    { "hook": "static:app.load", "method": "init", "priority": 1 },
+    { "hook": "filter:files.storage", "method": "resourceStorage" },
+    { "hook": "static:user.delete", "method": "deleteUserResources" },
+    { "hook": "filter:groups.destroy", "method": "deleteGroupResources" },
+    { "hook": "filter:group.renamed", "method": "renameGroupResources" },
+    { "hook": "filter:category.purge", "method": "deleteCategoryResources" },
+    { "hook": "filter:uploadPostFile", "method": "uploadPostFile" },
+    { "hook": "filter:post.create", "method": "preparePost" },
+    { "hook": "filter:post.edit", "method": "preparePost" },
+    { "hook": "filter:posts.purge", "method": "purge" },
+    { "hook": "filter:topic.thumb.associate", "method": "associateThumb" },
+    { "hook": "filter:topics.hasThumbs", "method": "hasThumbs" },
+    { "hook": "filter:topics.getThumbs", "method": "getThumbs" }
   ]
 }

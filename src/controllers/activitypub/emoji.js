@@ -7,6 +7,7 @@ const winston = require('winston');
 
 const emoji = require('../../activitypub/emoji');
 const uploads = require('../../middleware/uploads');
+const file = require('../../file');
 
 const Controller = module.exports;
 
@@ -25,22 +26,26 @@ Controller.serve = async (req, res) => {
 
 		// Path traversal check
 		const uploadPath = nconf.get('upload_path');
-		if (!path.resolve(metadata.localPath).startsWith(path.resolve(uploadPath))) {
+		if (!file.isPathInside(uploadPath, metadata.localPath)) {
 			winston.warn(`[activitypub:emoji] Path traversal attempt blocked: ${metadata.localPath}`);
 			return res.sendStatus(403);
 		}
 
 		// Check file exists; re-download from remote if stale
 		let filePath = metadata.localPath;
+		const stored = await file.storage('stat', filePath);
 		try {
-			await fs.access(filePath);
+			if (stored.handled) {
+				if (!stored.result) { throw new Error('资源不存在'); }
+			} else { await fs.access(filePath); }
 		} catch {
 			// File missing on disk — clear stale Redis entry and re-download
 			if (metadata.remoteUrl) {
 				winston.info(`[activitypub:emoji] Re-downloading stale emoji ${shortcode} from ${metadata.remoteUrl}`);
 				await emoji.deleteEmoji(shortcode, hostname);
 				const tag = { name: shortcode, icon: { url: metadata.remoteUrl, mediaType: metadata.mediaType } };
-				metadata = await emoji.cacheEmoji(tag);
+				await emoji.cacheEmoji(tag);
+				metadata = await emoji.getEmoji(shortcode, hostname);
 				if (!metadata || !metadata.localPath) {
 					return res.sendStatus(404);
 				}
@@ -48,6 +53,10 @@ Controller.serve = async (req, res) => {
 			} else {
 				return res.sendStatus(404);
 			}
+		}
+		if ((await file.storage('stat', filePath)).handled) {
+			const relative = path.relative(uploadPath, filePath).split(path.sep).map(encodeURIComponent).join('/');
+			return res.redirect(`${nconf.get('relative_path')}/assets/uploads/${relative}`);
 		}
 
 		const mediaType = metadata.mediaType || 'image/png';

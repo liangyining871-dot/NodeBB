@@ -14,3 +14,6 @@ Dockerfile
 .env.*
 config.json
 config.json.*
+
+# Runtime uploads belong in MinIO or mounted storage, never in the image.
+public/uploads
