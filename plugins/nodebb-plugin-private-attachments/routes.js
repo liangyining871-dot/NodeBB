@@ -39,7 +39,10 @@ function createReadHandler({ attachments, getStorage, setSafeFileHeaders, inline
 			}
 			setSafeFileHeaders(res, record.name);
 			res.type(file.mime);
-			res.set('Content-Security-Policy', "default-src 'none'; sandbox");
+			// A directly opened video uses the browser's native media document, which
+			// must be allowed to fetch authenticated same-origin Range requests.
+			res.set('Content-Security-Policy', /^video\/(mp4|webm|ogg)$/.test(file.mime) ?
+				"default-src 'none'; media-src 'self'; sandbox allow-same-origin" : "default-src 'none'; sandbox");
 			res.set('Content-Length', String(range ? range.end - range.start + 1 : size));
 			if (range) {
 				res.status(206).set('Content-Range', `bytes ${range.start}-${range.end}/${size}`);

@@ -132,6 +132,7 @@ test('GET、HEAD、视频 Range 均鉴权，禁止缓存，不返回 MinIO 地�
 	assert.equal(full.body, '0123456789');
 	assert.equal(full.headers['content-length'], '10');
 	assert.match(full.headers['content-disposition'], /^inline/);
+	assert.equal(full.headers['content-security-policy'], "default-src 'none'; media-src 'self'; sandbox allow-same-origin");
 	assert.equal(full.headers['cache-control'], 'private, no-store');
 	assert.equal(full.headers['x-content-type-options'], 'nosniff');
 	assert.equal(full.headers.location, undefined);
@@ -160,6 +161,7 @@ test('普通文件强制下载；非法 ID、变体和不存在对象不暴露�
 	assert.equal(res.status, 200);
 	assert.equal(res.headers['content-type'], 'application/octet-stream');
 	assert.match(res.headers['content-disposition'], /^attachment/);
+	assert.equal(res.headers['content-security-policy'], "default-src 'none'; sandbox");
 	assert.equal((await f.send('GET', result.url.replace('/original/', '/unknown/'), 12)).status, 404);
 	assert.equal((await f.send('GET', '/forum/attachments/invalid/original/file', 12)).status, 404);
 	f.client.statObject = async () => { throw Object.assign(new Error('secret endpoint'), { code: 'NoSuchKey' }); };
