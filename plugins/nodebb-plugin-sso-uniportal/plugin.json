@@ -6,6 +6,7 @@
     { "hook": "filter:middleware.renderHeader", "method": "navigationHeader" },
     { "hook": "filter:middleware.renderHeader", "method": "clientHeader" },
     { "hook": "filter:config.get", "method": "emailConfig" },
+    { "hook": "filter:middleware.registrationComplete", "method": "registrationComplete" },
     { "hook": "static:app.load", "method": "init" },
     { "hook": "static:sockets.validateSession", "method": "socketValidate" },
     { "hook": "action:sockets.connect", "method": "socketConnect" },

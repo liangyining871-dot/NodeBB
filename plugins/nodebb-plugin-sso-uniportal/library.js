@@ -208,6 +208,16 @@ exports.emailConfig = async function (settings) {
 	return settings;
 };
 
+exports.registrationComplete = async function (data) {
+	// Trust only the authenticated request identity and its server-side mapping.
+	// Do not mark email verification or consent as completed on the user's behalf.
+	const uid = Number(data.req?.uid);
+	if (uid > 0 && await globalThis.nodebb.require('./src/database').getObjectField(`user:${uid}`, 'uniportalId')) {
+		data.skip = true;
+	}
+	return data;
+};
+
 let accessControl;
 function access() {
 	if (!accessControl) {

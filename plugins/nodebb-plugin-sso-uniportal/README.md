@@ -37,6 +37,7 @@
   通知中的站点 Logo 使用 32px 容器和等比例完整显示，避免按方形头像拉伸或裁切，保留已有自定义样式。
 
 - 企业账号不显示缺少邮箱或邮箱验证的前端提醒（`filter:config.get` 按企业身份返回 `emailPrompt=0`）。
+  已认证且数据库有 Uniportal 身份映射的企业账号跳过 NodeBB 账号补充页，并清理旧会话的 registration 状态；直接访问旧 `/register/complete` 地址回到首页，不自动设置邮箱验证或同意标记。本地账号保持原流程。
   当前论坛 `requireEmailAddress=0`，不要求企业用户绑定邮箱；不伪造邮箱或邮件已验证标记，
   管理员本地账号原有提示及密码找回能力不变。新数据库部署也需保持 `requireEmailAddress=0`。
 

@@ -1,7 +1,7 @@
 'use strict';
 
 
-define('forum/categories', ['categorySelector', 'modals', 'benchpress'], function (categorySelector, modals, benchpress) {
+define('forum/categories', ['categorySelector'], function (categorySelector) {
 	const categories = {};
 
 	categories.init = async function () {
@@ -14,16 +14,6 @@ define('forum/categories', ['categorySelector', 'modals', 'benchpress'], functio
 			},
 		});
 
-		if (ajaxify.data.firstRun) {
-			const html = await benchpress.render('modals/first-run');
-			modals.dialog({
-				title: '[[category:first-run.welcome]]',
-				message: html,
-				backdrop: true,
-				scrollback: false,
-				closeButton: true,
-			});
-		}
 	};
 
 	return categories;

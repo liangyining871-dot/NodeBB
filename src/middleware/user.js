@@ -291,6 +291,15 @@ module.exports = function (middleware) {
 		 *   * email is required and they have no confirmed email (pending doesn't count, but admins are OK)
 		 */
 		const path = req.path.startsWith('/api/') ? req.path.replace('/api', '') : req.path;
+		const policy = await plugins.hooks.fire('filter:middleware.registrationComplete', {
+			req,
+			allowed: ['/register/complete', '/confirm/'],
+		});
+		if (policy.skip) {
+			delete req.session.registration;
+			if (path === '/register/complete') { return helpers.redirect(res, '/'); }
+			return setImmediate(next);
+		}
 
 		if (meta.config.requireEmailAddress && await requiresEmailConfirmation(req)) {
 			req.session.registration = {
@@ -304,9 +313,7 @@ module.exports = function (middleware) {
 			return setImmediate(next);
 		}
 
-		const { allowed } = await plugins.hooks.fire('filter:middleware.registrationComplete', {
-			allowed: ['/register/complete', '/confirm/'],
-		});
+		const { allowed } = policy;
 		if (allowed.includes(path) || allowed.some(p => path.startsWith(p))) {
 			return setImmediate(next);
 		}
