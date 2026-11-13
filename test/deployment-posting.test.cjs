@@ -29,4 +29,7 @@ test('new installations grant file uploads to registered users but not guests', 
 	});
 	assert.ok(grants.find(g => g.group === 'registered-users').privileges.includes('groups:upload:post:file'));
 	assert.equal(grants.find(g => g.group === 'guests').privileges.includes('groups:upload:post:file'), false);
+	for (const grant of grants) {
+		assert.equal(new Set(grant.privileges).size, grant.privileges.length, `duplicate privileges for ${grant.group}`);
+	}
 });
