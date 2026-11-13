@@ -270,7 +270,7 @@
     "initialPostDelay": 0,
     "requireEmailAddress": 0,
     "postQueue": 0,
-    "allowedFileExtensions": "png,jpg,bmp,txt,webp,webm,mp4,gif",
+    "allowedFileExtensions": "png,jpg,bmp,txt,webp,webm,mp4,gif,pdf,doc,docx,xls,xlsx,ppt,pptx,csv,md",
     "maximumFileSize": 2048
   }
 }

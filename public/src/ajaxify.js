@@ -65,6 +65,11 @@ ajaxify.widgets = { render: render };
 		}
 
 		if (internalLink) {
+			// Private attachments are authenticated binary responses, not forum pages.
+			// Use pathname so absolute links and links with query strings also work.
+			if (urlObj.pathname.startsWith(config.relative_path + '/attachments/')) {
+				return false;
+			}
 			// Default behaviour for rss feeds
 			if (pathname.endsWith('.rss')) {
 				return false;

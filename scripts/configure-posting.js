@@ -36,7 +36,7 @@ async function main() {
 		const backup = path.join(backupDirectory, `posting-before-${Date.now()}.json`);
 		await fs.writeFile(backup, `${JSON.stringify(before, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
 		await requireApp('./src/deployment-posting').apply({ meta, privileges });
-		console.log(`Applied. Backup: ${backup}. Restart the forum and refresh the browser. File type/size limits remain unchanged.`);
+		console.log(`Applied. Backup: ${backup}. Restart the forum and refresh the browser. Common document types are allowed; size limits remain unchanged.`);
 	} finally { await db.close(); }
 }
 

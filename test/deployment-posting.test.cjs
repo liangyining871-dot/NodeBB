@@ -8,12 +8,12 @@ test('posting repair disables review and grants only registered-user file upload
 	const config = { postQueue: 1, maximumFileSize: 2048, allowedFileExtensions: 'mp4,png' };
 	const grants = [];
 	await posting.apply({
-		meta: { configs: { set: async (key, value) => { config[key] = value; } } },
+		meta: { config, configs: { set: async (key, value) => { config[key] = value; } } },
 		privileges: { global: { give: async (...args) => grants.push(args) } },
 	});
 	assert.equal(config.postQueue, 0);
 	assert.equal(config.maximumFileSize, 2048);
-	assert.equal(config.allowedFileExtensions, 'mp4,png');
+	assert.equal(config.allowedFileExtensions, 'mp4,png,pdf,doc,docx,xls,xlsx,ppt,pptx,csv,md');
 	assert.deepEqual(grants, [[['groups:upload:post:file'], 'registered-users']]);
 });
 
