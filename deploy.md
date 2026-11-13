@@ -44,6 +44,13 @@ docker load -i docker_images/nodebb.tar
 ```
 
 ## 服务器首次上线（仅执行一次）
+最新镜像支持管理员邮箱留空，交互提示时直接回车。也可只指定用户名和密码：
+
+```sh
+docker compose -f docker-compose.production.yml run --rm -e SETUP=1 -e NODEBB_ADMIN_USERNAME='admin' -e NODEBB_ADMIN_PASSWORD='替换为强密码' nodebb
+```
+
+上述功能需使用包含修复的新镜像；旧镜像仍强制要求邮箱。未绑定邮箱时无法通过邮件找回管理员密码。下面的交互式初始化与上面的命令二选一，仅执行一次。
 ```sh
 cd /data/aixsilicon/nodebb
 docker compose -f docker-compose.production.yml run --rm -e SETUP=1 nodebb #首次初始化

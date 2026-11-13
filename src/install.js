@@ -68,11 +68,15 @@ function checkSetupFlagEnv() {
 
 	// Set setup values from env vars (if set)
 	const envKeys = Object.keys(process.env);
-	if (Object.keys(envConfMap).some(key => envKeys.includes(key))) {
+	// CONFIG is always exported by the Docker entrypoint. A config path alone
+	// must not turn interactive setup into automated administrator provisioning.
+	const automatedKeys = Object.keys(envConfMap).filter(key => key !== 'CONFIG' && key !== 'NODEBB_CONFIG');
+	if (automatedKeys.some(key => envKeys.includes(key))) {
 		winston.info('[install/checkSetupFlagEnv] checking env vars for setup info...');
 		setupVal = setupVal || {};
 
 		Object.entries(process.env).forEach(([evName, evValue]) => { // get setup values from env
+			if (!Object.hasOwn(envConfMap, evName)) { return; }
 			if (evName.startsWith('NODEBB_DB_')) {
 				setupVal[`${process.env.NODEBB_DB}:${envConfMap[evName]}`] = evValue;
 			} else if (evName.startsWith('NODEBB_')) {
@@ -96,7 +100,7 @@ function checkSetupFlagEnv() {
 	}
 
 	if (setupVal && typeof setupVal === 'object') {
-		if (setupVal['admin:username'] && setupVal['admin:password'] && setupVal['admin:password:confirm'] && setupVal['admin:email']) {
+		if (setupVal['admin:username'] && setupVal['admin:password'] && setupVal['admin:password:confirm']) {
 			install.values = setupVal;
 		} else {
 			winston.error('[install/checkSetupFlagEnv] required values are missing for automated setup:');
@@ -109,15 +113,9 @@ function checkSetupFlagEnv() {
 			if (!setupVal['admin:password:confirm']) {
 				winston.error('  admin:password:confirm');
 			}
-			if (!setupVal['admin:email']) {
-				winston.error('  admin:email');
-			}
 
-			process.exit();
+			process.exit(1);
 		}
-	} else if (nconf.get('database')) {
-		install.values = install.values || {};
-		install.values.database = nconf.get('database');
 	}
 }
 
@@ -326,9 +324,9 @@ async function createAdmin() {
 		type: 'string',
 	}, {
 		name: 'email',
-		description: 'Administrator email address',
-		pattern: /.+@.+/,
-		required: true,
+		description: 'Administrator email address (optional, press enter to skip)',
+		pattern: /^(?:$|.+@.+)$/,
+		required: false,
 	}];
 	const passwordQuestions = [{
 		name: 'password',
@@ -374,7 +372,7 @@ async function createAdmin() {
 			password: results.password,
 			email: results.email,
 		}, {
-			emailVerification: 'verify',
+			emailVerification: results.email ? 'verify' : 'skip',
 		});
 		await Groups.join('administrators', adminUid);
 		await Groups.show('administrators');
