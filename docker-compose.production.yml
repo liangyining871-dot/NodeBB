@@ -33,12 +33,12 @@ services:
       MINIO_USE_SSL: 'false'
       MINIO_ACCESS_KEY: 'aixsilicon'
       MINIO_SECRET_KEY: 'aixsilicon123456'
-      MINIO_BUCKET: 'nodebb-attachments'
+      MINIO_BUCKET: 'nodebb'
       MINIO_REGION: '' 
 
 
-      UNIPORTAL_ENABLED: 'false'
-      UNIPORTAL_AUTO_LOGIN: 'false'
+      UNIPORTAL_ENABLED: 'true'
+      UNIPORTAL_AUTO_LOGIN: 'true'
       UNIPORTAL_REQUIRE_LOGIN: 'true'
       UNIPORTAL_SESSION_TTL_SECONDS: '1800'
       UNIPORTAL_AUTHORIZE_URL: 'https://uniportal.huawei.com/saaslogin1/oauth2/authorize'

@@ -46,7 +46,7 @@ services:
       MINIO_PORT: '9000'
       MINIO_ACCESS_KEY: offline-test
       MINIO_SECRET_KEY: offline-test-only
-      MINIO_BUCKET: nodebb-offline-test
+      MINIO_BUCKET: nodebb
       MINIO_USE_SSL: 'false'
       UNIPORTAL_ENABLED: 'false'
       acpPluginInstallDisabled: 'true'
