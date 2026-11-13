@@ -32,6 +32,7 @@ test('fresh setup imports the actual snapshot and does not overwrite later chang
 	assert.equal(await appearance.apply({ ...f, snapshot: prepared }), true);
 	assert.equal(f.objects.get('config')['theme:id'], 'nodebb-theme-lavender');
 	assert.equal(f.objects.get('config').title, 'AIXSILICON广场');
+	assert.equal(f.objects.get('config').requireEmailAddress, 0);
 	assert.deepEqual(f.sets.get('plugins:active'), snapshot.plugins.map(p => p.id));
 	assert.equal(f.sets.get('plugins:active').includes('nodebb-plugin-web-push'), false);
 	assert.deepEqual(f.objects.get('widgets:global'), snapshot.presentationHashes.find(h => h._key === 'widgets:global').data);
@@ -66,4 +67,18 @@ test('missing packaged dependency fails before writing initialization marker', a
 	const f = fixture();
 	await assert.rejects(appearance.prepare({ db: f.db, snapshotPath, root: path.join(__dirname, 'missing-root') }), /ENOENT/);
 	assert.equal(f.objects.has('deployment:initial-appearance'), false);
+});
+
+test('explicit repair imports into an existing site while normal setup still skips', async () => {
+	const f = fixture();
+	await f.db.setObjectField('config', 'theme:id', 'nodebb-theme-harmony');
+	await f.db.setObjectField('deployment:initial-appearance', 'state', 'complete');
+	assert.equal(await appearance.prepare({ db: f.db, snapshotPath }), null);
+	const repaired = await appearance.prepare({ db: f.db, snapshotPath, force: true });
+	assert.equal(f.objects.get('deployment:initial-appearance').state, 'pending');
+	assert.equal(await appearance.apply({ ...f, snapshot: repaired }), true);
+	assert.equal(f.objects.get('config')['theme:id'], 'nodebb-theme-lavender');
+	assert.ok(f.sets.get('plugins:active').includes('nodebb-plugin-sso-uniportal'));
+	assert.equal(f.objects.get('config').requireEmailAddress, 0);
+	assert.equal(await appearance.prepare({ db: f.db, snapshotPath }), null);
 });

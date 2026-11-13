@@ -5,10 +5,10 @@ const path = require('node:path');
 const marker = 'deployment:initial-appearance';
 
 // Called only by setup, never by normal startup or upgrade.
-exports.prepare = async function ({ db, snapshotPath, root = path.resolve(__dirname, '..') }) {
+exports.prepare = async function ({ db, snapshotPath, root = path.resolve(__dirname, '..'), force = false }) {
 	if (!snapshotPath) { return null; }
 	const state = await db.getObjectField(marker, 'state');
-	if (state === 'complete' || (state !== 'pending' && await db.getObjectField('config', 'theme:id'))) {
+	if (!force && (state === 'complete' || (state !== 'pending' && await db.getObjectField('config', 'theme:id')))) {
 		return null;
 	}
 	const snapshot = JSON.parse(await fs.readFile(snapshotPath, 'utf8'));

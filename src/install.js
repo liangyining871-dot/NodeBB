@@ -627,7 +627,7 @@ install.setup = async function () {
 		const appearanceDb = require('./database');
 		const appearance = await initialAppearance.prepare({
 			db: appearanceDb,
-			snapshotPath: process.env.INITIAL_APPEARANCE_SNAPSHOT,
+			snapshotPath: process.env.INITIAL_APPEARANCE_SNAPSHOT || path.join(__dirname, '../install/docker/appearance.snapshot.json'),
 		});
 		const appearanceAlreadyApplied = await appearanceDb.getObjectField('deployment:initial-appearance', 'state') === 'complete';
 		await setupDefaultConfigs();

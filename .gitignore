@@ -83,3 +83,4 @@ test.out
 .env
 .env.*
 !.env.example
+/backups/

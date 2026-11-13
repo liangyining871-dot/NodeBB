@@ -267,6 +267,7 @@
     "activitypubEnabled": 0,
     "postDelay": 0,
     "newbiePostDelay": 0,
-    "initialPostDelay": 0
+    "initialPostDelay": 0,
+    "requireEmailAddress": 0
   }
 }

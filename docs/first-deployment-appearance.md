@@ -5,7 +5,7 @@
 
 Dockerfile 已设置 `INITIAL_APPEARANCE_SNAPSHOT=/usr/src/app/install/docker/appearance.snapshot.json`。
 使用新镜像执行原有 `SETUP=1` 初始化即可自动导入，无需手改数据库。
-本地开发默认不导入；需要在专门的新数据库上验证时，可显式设置此环境变量为快照绝对路径后执行 setup。不要对当前本地数据库重新初始化。
+Windows 直接运行的首次 setup 默认也读取仓库内快照；环境变量可指定其他快照路径。只对新数据库自动导入，已有站点仍跳过。不要为了修复外观对已有数据库重新初始化。
 
 ## 当前实际配置
 
@@ -18,6 +18,7 @@ Dockerfile 已设置 `INITIAL_APPEARANCE_SNAPSHOT=/usr/src/app/install/docker/ap
 - 启用包共 11 个（包含主题）：composer-default、lavender、dbsearch、markdown、mentions、widget-essentials、rewards-essentials、emoji、emoji-android、private-attachments、sso-uniportal；完整包名、实际安装版本及顺序在快照中。
 - web-push 未启用。Uniportal 插件处于启用列表不代表企业认证环境变量已配置。
 - 保留当前运行策略：activitypubEnabled、postDelay、newbiePostDelay、initialPostDelay 均为 0。
+- requireEmailAddress=0 与本地一致。企业账号通过 Uniportal 插件关闭缺少邮箱提示；本地管理员的邮箱提醒保留。
 
 ## 首次初始化应用顺序
 
