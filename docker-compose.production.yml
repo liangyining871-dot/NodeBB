@@ -26,6 +26,7 @@ services:
       postgres__password: '123456'
       postgres__ssl: 'false'
 
+      # 镜像内的外观快照，仅首次初始化自动应用主题、插件及外观；服务器无需另行上传。
       INITIAL_APPEARANCE_SNAPSHOT: /usr/src/app/install/docker/appearance.snapshot.json
 
       MINIO_ENDPOINT: 'host.docker.internal'

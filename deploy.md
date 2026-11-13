@@ -11,7 +11,7 @@ node --env-file=.env .\nodebb build --series #重新build命令
 node --env-file=.env .\nodebb dev #再次启动
 ```
 
-## 蓝区：构建并导出
+## 蓝区：构建镜像并导出
 ```powershell
 docker build -t nodebb-nodebb:latest .
 docker save nodebb-nodebb:latest -o D:\deploy-export\nodebb.tar
@@ -41,14 +41,13 @@ sudo chown -R 1001:1001 .docker
 将文件放到上述位置后，加载镜像：
 ```sh
 docker load -i docker_images/nodebb.tar
-docker compose -f docker-compose.production.yml config --quiet
 ```
 
 ## 服务器首次上线（仅执行一次）
 ```sh
 cd /data/aixsilicon/nodebb
-docker compose -f docker-compose.production.yml run --rm -e SETUP=1 nodebb
-docker compose -f docker-compose.production.yml up -d nodebb
+docker compose -f docker-compose.production.yml run --rm -e SETUP=1 nodebb #首次初始化
+docker compose -f docker-compose.production.yml up -d nodebb #启动
 ```
 按提示确认正式地址 `http://aixsilicon.developers.hisilicon.com:9203`、数据库参数并填写管理员信息。配置保存在 `.docker/config/config.json`，仅首次安装执行初始化。当前本地外观会自动应用，详情见 `docs/first-deployment-appearance.md`。
 当前镜像在本地安装锁定依赖、使用临时 PostgreSQL 构建当前主题及插件资源，临时数据库和配置不会带入最终镜像。内网入口不再执行 npm install，首次 setup 跳过构建；正常启动仅执行数据库迁移后启动论坛。
@@ -75,24 +74,4 @@ docker compose -f docker-compose.production.yml up -d --force-recreate nodebb
 入口每次启动仅运行待执行的 schema 迁移；升级前必须备份，迁移失败不会继续启动。回滚镜像未必能回滚数据库，必要时恢复配套备份。
 普通代码和主题资源更新使用新镜像即可；已初始化数据库的主题/插件选择不自动覆盖，切换主题或启用包时须同时规划数据库配置与镜像资源，不能只在内网后台切换后期望自动构建。
 
-## 本地无外网验证
-
-`test/docker-compose.offline.yml` 使用独立项目名、临时数据库和独立数据卷，网络 `internal: true`，不接入真实数据库、MinIO 或本地 `.env`。
-先准备测试镜像 `nodebb-offline:validation` 以及 `postgres:16.13`、`minio/minio:latest`，测试 Compose 禁止自动拉取。
-
-```powershell
-docker build -t nodebb-offline:validation .
-docker compose -f test/docker-compose.offline.yml up -d postgres minio
-docker compose -f test/docker-compose.offline.yml run --rm -T -e SETUP=1 nodebb
-docker compose -f test/docker-compose.offline.yml up -d nodebb
-docker compose -f test/docker-compose.offline.yml cp test/offline-smoke.cjs nodebb:/tmp/offline-smoke.cjs
-docker compose -f test/docker-compose.offline.yml exec -T nodebb node /tmp/offline-smoke.cjs
-```
-
-测试脚本验证实际主题/插件、资源加载、管理员登录、MinIO 读写及外网不可达。
-可在 `restart nodebb` 或 `up -d --force-recreate nodebb` 后重新复制脚本并执行，确认配置与数据保留。
-测试结束执行 `docker compose -f test/docker-compose.offline.yml down`；测试数据卷仅用于验证，不包含生产数据。
-
-2026-11-12 已在本地 Docker Desktop（Linux/amd64）完成实际镜像构建，以及 internal 网络下的首次初始化、启动、管理员登录、主题/Logo/资源加载和 MinIO 读写验证；测试确认无法访问外网。重启和重建容器后再次通过，且服务器端修改的测试标题被保留。镜像未包含本地 .env、临时 config.json 或临时数据库，未声明匿名 build/node_modules 卷。
-构建时 npm audit 报告现有依赖共 13 项漏洞（10 moderate、3 high）；本次未自动升级依赖，以免改变主题/插件兼容性，需另行评估修复。
 
