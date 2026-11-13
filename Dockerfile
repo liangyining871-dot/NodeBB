@@ -15,7 +15,15 @@ COPY --chown=1001:1001 package-lock.json ./package-lock.json
 COPY --chown=1001:1001 plugins ./plugins
 COPY --chown=1001:1001 scripts ./scripts
 USER nodebb
-RUN npm ci --omit=dev
+# Keep downloaded tarballs across failed builds; retry transient registry resets.
+# Cache ownership must match the non-root build user.
+RUN --mount=type=cache,target=/home/nodebb/.npm,uid=1001,gid=1001 \
+    for attempt in 1 2 3; do \
+      if npm ci --omit=dev --no-audit --no-fund \
+          --fetch-retries=5 --fetch-retry-mintimeout=10000 \
+          --fetch-retry-maxtimeout=60000 --fetch-timeout=300000; then break; fi; \
+      test "$attempt" != 3 || exit 1; \
+    done
 COPY --chown=1001:1001 . .
 RUN cp install/package.json package.json && sed -i 's/\r$//' install/docker/*.sh
 RUN bash install/docker/build-offline.sh
