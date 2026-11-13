@@ -61,6 +61,13 @@ function createAccessControl({ db, user, helpers, sockets, env = process.env, no
 				req.uid = 0;
 				req.loggedIn = false;
 			}
+			// Reaching /login after a revoked session must not fall through to the
+			// local form. Keep only explicit local login and failed-OAuth recovery.
+			if (['/login', '/login/'].includes(p) && ['GET', 'HEAD'].includes(req.method) &&
+				env.UNIPORTAL_AUTO_LOGIN === 'true' && req.query?.local !== '1' && req.query?.uniportal !== 'failed') {
+				res.set('Cache-Control', 'no-store');
+				return helpers.redirect(res, { external: '/auth/uniportal' });
+			}
 			if (publicRoute(p, req.method)) { return next(); }
 			const loginUrl = `${relativePath}/auth/uniportal`;
 			res.set('Cache-Control', 'no-store');

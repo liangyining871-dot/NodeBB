@@ -39,7 +39,11 @@
 	async function redirect() {
 		if (redirecting) { return; }
 		redirecting = true;
-		await preserveDrafts();
+		// A suspended/missing composer module must not leave an expired session
+		// stuck indefinitely on the disconnected page.
+		try {
+			await Promise.race([preserveDrafts(), new Promise(resolve => root.setTimeout(resolve, 2000))]);
+		} catch { /* Reauthentication must still work if the draft loader is unavailable. */ }
 		root.location.replace(loginUrl);
 	}
 	function checkDeadline() {
@@ -49,6 +53,10 @@
 		if (root.socket && root.socket !== boundSocket) {
 			boundSocket = root.socket;
 			root.socket.on('event:uniportal.expired', redirect);
+			root.socket.on('event:invalid_session', redirect);
+			root.socket.on('disconnect', (reason) => {
+				if (reason === 'io server disconnect') { redirect(); } else { checkDeadline(); }
+			});
 		}
 	}
 	const originalFetch = root.fetch.bind(root);
