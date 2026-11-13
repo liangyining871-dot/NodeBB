@@ -33,6 +33,7 @@ test('fresh setup imports the actual snapshot and does not overwrite later chang
 	assert.equal(f.objects.get('config')['theme:id'], 'nodebb-theme-lavender');
 	assert.equal(f.objects.get('config').title, 'AIXSILICON广场');
 	assert.equal(f.objects.get('config').requireEmailAddress, 0);
+	assert.equal(f.objects.get('config').postQueue, 0);
 	assert.deepEqual(f.sets.get('plugins:active'), snapshot.plugins.map(p => p.id));
 	assert.equal(f.sets.get('plugins:active').includes('nodebb-plugin-web-push'), false);
 	assert.deepEqual(f.objects.get('widgets:global'), snapshot.presentationHashes.find(h => h._key === 'widgets:global').data);

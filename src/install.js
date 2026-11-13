@@ -433,7 +433,7 @@ async function createGlobalModeratorsGroup() {
 async function giveGlobalPrivileges() {
 	const privileges = require('./privileges');
 	const defaultPrivileges = [
-		'groups:chat', 'groups:upload:post:image', 'groups:signature', 'groups:search:content',
+		'groups:chat', 'groups:upload:post:image', 'groups:upload:post:file', 'groups:signature', 'groups:search:content',
 		'groups:search:users', 'groups:search:tags', 'groups:view:users', 'groups:view:tags', 'groups:view:groups',
 		'groups:local:login',
 	];

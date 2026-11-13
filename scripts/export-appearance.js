@@ -39,7 +39,7 @@ async function main() {
 			schemaVersion: 1, exportedAt: new Date().toISOString(), nodebbVersion: local.version || require('../package.json').version,
 			targetUrl: 'http://aixsilicon.developers.hisilicon.com:9203',
 			config, plugins, presentationHashes: hashes, navigation,
-			localPolicies: Object.fromEntries(['activitypubEnabled', 'postDelay', 'newbiePostDelay', 'initialPostDelay', 'requireEmailAddress'].map(key => [key, source[key]])),
+			localPolicies: Object.fromEntries(['activitypubEnabled', 'postDelay', 'newbiePostDelay', 'initialPostDelay', 'requireEmailAddress', 'postQueue', 'allowedFileExtensions', 'maximumFileSize'].map(key => [key, source[key]])),
 		};
 		const destination = path.join(root, 'install/docker/appearance.snapshot.json');
 		await fs.writeFile(destination, `${JSON.stringify(snapshot, null, 2)}\n`);

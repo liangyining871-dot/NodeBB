@@ -268,6 +268,9 @@
     "postDelay": 0,
     "newbiePostDelay": 0,
     "initialPostDelay": 0,
-    "requireEmailAddress": 0
+    "requireEmailAddress": 0,
+    "postQueue": 0,
+    "allowedFileExtensions": "png,jpg,bmp,txt,webp,webm,mp4,gif",
+    "maximumFileSize": 2048
   }
 }
