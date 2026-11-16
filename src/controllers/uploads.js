@@ -240,6 +240,8 @@ async function validateFileExtension(uploadedFile) {
 	const detected = await fileTypeFromFile(uploadedFile.path);
 	const detectedExtension = detected ? `.${detected.ext}` : '';
 	if (detectedExtension && detectedExtension !== extension) {
+		// WMV 使用 ASF 容器，文件检测通常返回 asf；仍遵守显式的 ASF 黑名单。
+		if (extension === '.wmv' && detectedExtension === '.asf' && !blocked.includes('.asf')) { return; }
 		validateExtension(detectedExtension);
 	}
 }

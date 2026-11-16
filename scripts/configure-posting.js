@@ -9,6 +9,9 @@ requireApp('./require-main');
 requireApp('./nodebb-global');
 
 async function main() {
+	const sizeArg = process.argv.find(arg => arg.startsWith('--max-file-size-kb='));
+	const limit = sizeArg && Number(sizeArg.split('=')[1]);
+	if (sizeArg && (!Number.isSafeInteger(limit) || limit <= 0)) { throw new Error('上传上限必须是正整数，单位 KB'); }
 	nconf.env({ separator: '__' });
 	const prestart = requireApp('./src/prestart');
 	prestart.loadConfig(path.resolve(root, process.env.CONFIG || path.join(process.env.CONFIG_DIR || root, 'config.json')));
@@ -36,7 +39,9 @@ async function main() {
 		const backup = path.join(backupDirectory, `posting-before-${Date.now()}.json`);
 		await fs.writeFile(backup, `${JSON.stringify(before, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
 		await requireApp('./src/deployment-posting').apply({ meta, privileges });
-		console.log(`Applied. Backup: ${backup}. Restart the forum and refresh the browser. Common document types are allowed; size limits remain unchanged.`);
+		// 只有显式指定参数时才调整大小，普通发帖配置修复保留原上限。
+		if (sizeArg) { await meta.configs.set('maximumFileSize', limit); }
+		console.log(`Applied. Backup: ${backup}. Restart the forum and refresh the browser. Upload limit: ${sizeArg ? limit : before.maximumFileSizeKB} KB.`);
 	} finally { await db.close(); }
 }
 

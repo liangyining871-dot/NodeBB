@@ -22,11 +22,15 @@ function readConfig(env = process.env) {
 		throw new Error('MINIO_ENDPOINT 只填写主机名或 IPv4 地址，不含协议、端口或路径');
 	}
 	const bucket = get('BUCKET') || 'nodebb';
+	const requestTimeout = Number(get('REQUEST_TIMEOUT_MS') || 300000);
+	if (!Number.isSafeInteger(requestTimeout) || requestTimeout < 1000 || requestTimeout > 1800000) {
+		throw new Error('MINIO_REQUEST_TIMEOUT_MS 必须为 1000 到 1800000 之间的整数');
+	}
 	if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(bucket)) {
 		throw new Error('MINIO_BUCKET 格式不正确');
 	}
 	return {
-		bucket,
+		bucket, requestTimeout,
 		options: {
 			endPoint: get('ENDPOINT'), port, useSSL: useSSL === 'true',
 			accessKey: get('ACCESS_KEY'), secretKey: env.MINIO_SECRET_KEY,
@@ -36,9 +40,10 @@ function readConfig(env = process.env) {
 }
 
 async function connect(env = process.env) {
-	const { bucket, options } = readConfig(env);
+	const { bucket, options, requestTimeout } = readConfig(env);
 	const client = new Client(options);
-	client.setRequestOptions({ timeout: 10000 });
+	// 大附件在较慢网络下也需要足够的读写等待时间，本地和容器共用此配置。
+	client.setRequestOptions({ timeout: requestTimeout });
 	try {
 		if (!await client.bucketExists(bucket)) {
 			// 新桶默认私有，不写入任何公开策略。

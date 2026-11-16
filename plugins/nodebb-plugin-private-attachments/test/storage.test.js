@@ -14,6 +14,8 @@ test('配置默认值与可选区域，不修改密钥原文', () => {
 	assert.equal(options.useSSL, false);
 	assert.equal(options.secretKey, env.MINIO_SECRET_KEY);
 	assert.equal(Object.hasOwn(options, 'region'), false);
+	assert.equal(readConfig(env).requestTimeout, 300000);
+	assert.equal(readConfig({ ...env, MINIO_REQUEST_TIMEOUT_MS: '600000' }).requestTimeout, 600000);
 	assert.equal(readConfig({ ...env, MINIO_USE_SSL: 'true' }).options.port, 443);
 });
 
@@ -24,6 +26,8 @@ test('无效配置被拒绝，错误不包含配置值', () => {
 		{ MINIO_USE_SSL: 'yes' },
 		{ MINIO_ACCESS_KEY: '' },
 		{ MINIO_BUCKET: '../invalid' },
+		{ MINIO_REQUEST_TIMEOUT_MS: '0' },
+		{ MINIO_REQUEST_TIMEOUT_MS: 'invalid' },
 	]) {
 		assert.throws(() => readConfig({ ...env, ...extra }), (err) => {
 			assert.equal(err.message.includes('sensitive'), false);

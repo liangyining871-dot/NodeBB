@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "exportedAt": "2026-11-16T02:05:46.867Z",
+  "exportedAt": "2026-11-16T02:46:22.722Z",
   "nodebbVersion": "4.16.7",
   "targetUrl": "http://aixsilicon.developers.hisilicon.com:9203",
   "config": {
@@ -271,6 +271,6 @@
     "requireEmailAddress": 0,
     "postQueue": 0,
     "allowedFileExtensions": "png,jpg,bmp,txt,webp,webm,mp4,gif,pdf,doc,docx,xls,xlsx,ppt,pptx,csv,md,wmv,ogg",
-    "maximumFileSize": 2048
+    "maximumFileSize": 102400
   }
 }

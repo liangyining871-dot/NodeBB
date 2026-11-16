@@ -19,7 +19,7 @@ Windows 直接运行的首次 setup 默认也读取仓库内快照；环境变�
 - web-push 未启用。Uniportal 插件处于启用列表不代表企业认证环境变量已配置。
 - 保留当前运行策略：activitypubEnabled、postDelay、newbiePostDelay、initialPostDelay 均为 0。
 - requireEmailAddress=0 与本地一致。企业账号通过 Uniportal 插件关闭缺少邮箱提示；本地管理员的邮箱提醒保留。
-- postQueue=0；文件白名单包含 MP4、WMV、WebM、OGG，上传上限保持 2048 KB（2 MB）。
+- postQueue=0；文件白名单包含 MP4、WMV、WebM、OGG，普通附件上限为 102400 KB（100 MiB）。
 - 镜像包含首页图片/视频封面预览、帖子内直接播放及 FFmpeg，构建时实际验证 WMV 转换和封面提取。
 
 ## 首次初始化应用顺序

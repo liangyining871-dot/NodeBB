@@ -1,4 +1,4 @@
-# 本文件仅做运行及部署介绍，，不涉及这两项时不要随意修改 
+# 本文件仅做运行及部署介绍，不涉及这两项时不要随意修改
 
 # 蓝区本地运行（nodebb要求Node.js版本与蓝区本机不一致，额外下了一个对应版本）
 $env:Path = "D:\software\workspace\developTools\node-v24.22.2-win-x64;" + $env:Path #切换nodejs版本
@@ -15,7 +15,7 @@ node --env-file=.env .\nodebb dev #再次启动
 
 部署前先更新快照并检查，使用上面的 Node.js 24 路径。外观快照只包含主题、插件、导航、外观和上传策略，
 不包含帖子、用户、版块结构、版块的摘要数量设置、PostgreSQL 数据和 MinIO 对象；需要迁移内容时单独备份恢复。
-当前上传上限仍为 2048 KB（2 MB）；视频较大时需在管理后台调整上限，再重新导出快照。
+当前上传上限为 102400 KB（100 MiB，104857600 字节），适用于图片之外的普通文件附件，已验证 Windows 本地与 Linux 容器。
 首次初始化自动应用镜像里的快照，已有生产数据库升级不会覆盖原有设置。
 
 ```powershell
@@ -102,9 +102,9 @@ docker compose -f docker-compose.production.yml up -d --force-recreate nodebb
 更新时保留 `.docker`，不要重新执行首次初始化。
 
 已有站点的白名单不会随镜像更新。需要补齐 WMV 等格式时，停服备份后执行以下一次性配置命令，
-它也会关闭发帖审核、允许注册用户上传文件，上传大小上限保持不变：
+它也会关闭发帖审核、允许注册用户上传文件；显式指定参数将已有站点的附件上限调整为 100 MiB：
 ```sh
-docker compose -f docker-compose.production.yml run --rm --no-deps --entrypoint node nodebb scripts/configure-posting.js --apply
+docker compose -f docker-compose.production.yml run --rm --no-deps --entrypoint node nodebb scripts/configure-posting.js --apply --max-file-size-kb=102400
 ```
 
 升级启动会执行数据库迁移，因此回退不应只更换旧镜像；需要按同一备份时间点恢复数据库、
@@ -116,7 +116,18 @@ MinIO 对象及 `.docker/config`。不要执行 `docker compose down -v` 删除�
 - 验证图片上传、首页图片缩略图、MP4 点击封面直接播放、拖动进度，以及 WMV 首次转换和后续复用。
 - 验证首页视频封面、刷新后复用，以及无权限用户不能读取图片、封面、原视频或 Range 分段。
 - 大视频首次转换可能耗时，反向代理的读取超时应覆盖转换等待（当前转换超时为十分钟），
-  代理应透传 Range/Content-Range；上传体积限制应与论坛配置匹配。
+  代理应透传 Range/Content-Range；上传体积限制需大于单文件 100 MiB，预留 multipart 表单开销。
+  例如 Nginx 可使用 `client_max_body_size 110m; client_body_timeout 600s; proxy_read_timeout 600s; proxy_send_timeout 600s;`。
+  Compose 当前直接暴露 9203 端口，不包含 Nginx；有网关时需要在实际网关同步调整。
+- MinIO 请求等待默认五分钟，使用 `MINIO_REQUEST_TIMEOUT_MS` 调整；视频转码仍保留十分钟上限。
+
+## 100 MiB 手动集成验证
+
+`scripts/test-large-upload.js <样本目录> --generate` 通过 FFmpeg 生成约 100 MiB 的有效 MP4、WMV，
+以及恰好 100 MiB、超出一字节的边界文件。然后加载本地 `.env` 运行同一脚本并加 `--video`，
+验证原生 multipart 上传、真实 PostgreSQL/MinIO、完整下载 SHA-256、HEAD、Range、权限、封面及 WMV 转码。
+目标大小只作用于测试进程，不写数据库；本次创建的随机附件会自动清理。
+Linux 验证使用与生产相同的镜像，提供测试专用数据库/MinIO 环境变量和可写样本目录，不对生产数据库运行此测试。
 
 # 重启
 docker compose -f docker-compose.production.yml restart nodebb
