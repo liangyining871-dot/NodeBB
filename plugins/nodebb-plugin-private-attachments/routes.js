@@ -11,8 +11,9 @@ function createReadHandler({ attachments, getStorage, setSafeFileHeaders, inline
 		try {
 			let { record, file } = await attachments.getReadable(req.params.id, req.uid, req.params.variant);
 			// 先检查原件权限，再生成预览；转换完成后再次检查，防止等待期间权限变化。
-			if (req.query.preview === '1' && req.params.variant === 'original' && /\.wmv$/i.test(record.name)) {
-				file = await videoPreview(record);
+			const poster = req.query.poster === '1' && req.params.variant === 'original' && /\.(mp4|wmv|webm|ogg)$/i.test(record.name);
+			if (poster || (req.query.preview === '1' && req.params.variant === 'original' && /\.wmv$/i.test(record.name))) {
+				file = await videoPreview(record, poster ? 'poster' : 'preview');
 				await attachments.getReadable(req.params.id, req.uid, req.params.variant);
 			}
 			const { client, bucket } = getStorage();
@@ -38,7 +39,8 @@ function createReadHandler({ attachments, getStorage, setSafeFileHeaders, inline
 			// 仅浏览器可安全展示的图片和常用视频内联，其余文件强制下载。
 			const inline = /^(image\/(jpeg|png|gif|webp|avif|x-icon|vnd.microsoft.icon)|video\/(mp4|webm|ogg))$/.test(file.mime) ||
 				(inlineSvg && file.mime === 'image/svg+xml');
-			res.attachment(req.query.preview === '1' && file.mime === 'video/mp4' ? `${record.name}.mp4` : record.name);
+			res.attachment(poster ? `${record.name}.jpg` :
+				(req.query.preview === '1' && file.mime === 'video/mp4' ? `${record.name}.mp4` : record.name));
 			if (inline) {
 				res.set('Content-Disposition', res.get('Content-Disposition').replace(/^attachment/, 'inline'));
 			}

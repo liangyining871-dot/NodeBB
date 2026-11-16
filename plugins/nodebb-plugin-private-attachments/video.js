@@ -20,26 +20,38 @@ async function convertVideo(input, output) {
 	], { timeout: 10 * 60 * 1000, maxBuffer: 1024 * 1024, windowsHide: true });
 }
 
-function createVideoPreview({ db, getStorage, convert = convertVideo }) {
+// 从第一帧提取封面，避免短视频因固定时间点超出时长而生成失败。
+async function extractPoster(input, output) {
+	await run(process.env.FFMPEG_PATH || 'ffmpeg', [
+		'-nostdin', '-y', '-v', 'error', '-protocol_whitelist', 'file,pipe', '-i', input,
+		'-map', '0:v:0', '-frames:v', '1', '-vf', 'scale=640:-2', '-q:v', '3', '-threads', '2', output,
+	], { timeout: 60 * 1000, maxBuffer: 1024 * 1024, windowsHide: true });
+}
+
+function createVideoPreview({ db, getStorage, convert = convertVideo, poster = extractPoster }) {
 	let queue = Promise.resolve();
 	const pending = new Map();
-	return function preview(record) {
+	return function preview(record, variant = 'preview') {
+		if (!['preview', 'poster'].includes(variant)) { throw new Error('无效的视频变体'); }
+		const taskKey = `${record.id}:${variant}`;
 		// 同一附件共享任务，所有转换串行执行，避免同时启动大量 FFmpeg。
-		if (pending.has(record.id)) { return pending.get(record.id); }
+		if (pending.has(taskKey)) { return pending.get(taskKey); }
 		const task = queue.then(async () => {
 			const key = `privateAttachment:${record.id}`;
 			const current = await db.getObject(key);
 			if (!current || !['pending', 'attached'].includes(current.status)) { throw new Error('附件不可用'); }
 			const variants = JSON.parse(current.variants);
-			if (variants.preview) { return variants.preview; }
+			if (variants[variant]) { return variants[variant]; }
 			const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'nodebb-video-'));
 			const { client, bucket } = getStorage();
-			const file = { objectKey: `${record.id}/preview.mp4`, mime: 'video/mp4' };
+			const isPoster = variant === 'poster';
+			const filename = isPoster ? 'poster.jpg' : 'preview.mp4';
+			const file = { objectKey: `${record.id}/${filename}`, mime: isPoster ? 'image/jpeg' : 'video/mp4' };
 			try {
-				const input = path.join(dir, 'original.wmv');
-				const output = path.join(dir, 'preview.mp4');
+				const input = path.join(dir, 'original');
+				const output = path.join(dir, filename);
 				await pipeline(await client.getObject(bucket, variants.original.objectKey), createWriteStream(input));
-				await convert(input, output);
+				await (isPoster ? poster : convert)(input, output);
 				file.size = (await fs.stat(output)).size;
 				await client.fPutObject(bucket, file.objectKey, output, { 'Content-Type': file.mime });
 				// 转换期间帖子可能被删除，禁止重新创建已删除的附件记录。
@@ -48,15 +60,15 @@ function createVideoPreview({ db, getStorage, convert = convertVideo }) {
 					await client.removeObject(bucket, file.objectKey);
 					throw new Error('附件不可用');
 				}
-				await db.setObjectField(key, 'variants', JSON.stringify({ ...JSON.parse(latest.variants), preview: file }));
+				await db.setObjectField(key, 'variants', JSON.stringify({ ...JSON.parse(latest.variants), [variant]: file }));
 				return file;
 			} finally {
 				await fs.rm(dir, { recursive: true, force: true });
 			}
 		});
 		queue = task.catch(() => {});
-		pending.set(record.id, task);
-		return task.finally(() => pending.delete(record.id));
+		pending.set(taskKey, task);
+		return task.finally(() => pending.delete(taskKey));
 	};
 }
 

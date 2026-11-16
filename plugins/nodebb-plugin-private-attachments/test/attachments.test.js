@@ -178,6 +178,30 @@ test('WMV 预览先鉴权，转换结果支持 HEAD 和 Range，原件仍可下�
 	assert.equal(original.body, '0123456789');
 });
 
+test('视频封面继承原件权限，返回图片响应且支持 HEAD', async (t) => {
+	let calls = 0;
+	const f = await fixture(t, { videoPreview: async (record, variant) => {
+		calls += 1;
+		assert.equal(variant, 'poster');
+		return { objectKey: 'poster', mime: 'image/jpeg' };
+	} });
+	f.objects.set('poster', Buffer.from('jpeg'));
+	const uploaded = await f.attachments.upload({ file: { ...f.file, name: '视频.mp4' }, uid: 12,
+		detected: { mime: 'video/mp4', ext: 'mp4' } });
+	const url = `${uploaded.url}?poster=1`;
+	assert.equal((await f.send('GET', url, 13)).status, 404);
+	assert.equal(calls, 0);
+	const response = await f.send('GET', url, 12);
+	assert.equal(response.status, 200);
+	assert.equal(response.headers['content-type'], 'image/jpeg');
+	assert.match(response.headers['content-disposition'], /^inline/);
+	assert.equal(response.headers['cache-control'], 'private, no-store');
+	assert.equal(response.body, 'jpeg');
+	const head = await f.send('HEAD', url, 12);
+	assert.equal(head.status, 200);
+	assert.equal(head.body, '');
+});
+
 test('普通文件强制下载；非法 ID、变体和不存在对象不暴露底层错误', async (t) => {
 	const f = await fixture(t);
 	const result = await f.attachments.upload({ file: f.file, uid: 12 });

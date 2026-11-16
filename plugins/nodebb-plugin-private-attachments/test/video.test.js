@@ -6,7 +6,7 @@ const fs = require('node:fs/promises');
 const { Readable } = require('node:stream');
 const { createVideoPreview } = require('../video');
 
-function fixture(convert) {
+function fixture(convert, poster) {
 	const record = { id: 'video', status: 'attached', variants: JSON.stringify({ original: { objectKey: 'video/original.wmv' } }) };
 	const objects = new Map();
 	const db = {
@@ -18,8 +18,25 @@ function fixture(convert) {
 		async fPutObject(bucket, key, source) { objects.set(key, await fs.readFile(source)); },
 		async removeObject(bucket, key) { objects.delete(key); },
 	};
-	return { record, objects, preview: createVideoPreview({ db, getStorage: () => ({ client, bucket: 'private' }), convert }) };
+	return { record, objects, preview: createVideoPreview({ db, getStorage: () => ({ client, bucket: 'private' }), convert, poster }) };
 }
+
+test('封面单独生成并缓存，和播放变体共存且不覆盖原件', async () => {
+	let calls = 0;
+	const f = fixture(async (input, output) => fs.writeFile(output, 'mp4'), async (input, output) => {
+		calls += 1;
+		await fs.writeFile(output, 'jpeg');
+	});
+	const [poster, preview] = await Promise.all([f.preview(f.record, 'poster'), f.preview(f.record)]);
+	assert.equal(poster.mime, 'image/jpeg');
+	assert.equal(preview.mime, 'video/mp4');
+	assert.deepEqual(await f.preview(f.record, 'poster'), poster);
+	assert.equal(calls, 1);
+	const variants = JSON.parse(f.record.variants);
+	assert.equal(variants.original.objectKey, 'video/original.wmv');
+	assert.equal(variants.poster.objectKey, 'video/poster.jpg');
+	assert.equal(variants.preview.objectKey, 'video/preview.mp4');
+});
 
 test('WMV 合并并发转换、复用 MP4，保留原件', async () => {
 	let calls = 0;
