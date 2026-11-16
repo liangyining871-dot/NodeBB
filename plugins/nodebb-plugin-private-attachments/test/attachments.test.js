@@ -12,7 +12,7 @@ const express = require('express');
 const { createAttachments } = require('../attachments');
 const { createReadHandler } = require('../routes');
 
-async function fixture(t, { thumbnail = false } = {}) {
+async function fixture(t, { thumbnail = false, videoPreview } = {}) {
 	const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'nodebb-attachment-test-'));
 	t.after(() => fs.rm(dir, { recursive: true, force: true }));
 	const file = { path: path.join(dir, 'upload'), name: '测试.pdf', type: 'text/html' };
@@ -44,7 +44,7 @@ async function fixture(t, { thumbnail = false } = {}) {
 	const app = express();
 	app.use((req, res, next) => { req.uid = Number(req.get('X-Test-Uid') || 0); next(); });
 	app.get('/forum/attachments/:id/:variant/:filename', createReadHandler({
-		attachments, getStorage,
+		attachments, getStorage, videoPreview,
 		setSafeFileHeaders(res) { res.set('X-Content-Type-Options', 'nosniff'); },
 	}));
 	const server = app.listen(0, '127.0.0.1');
@@ -152,6 +152,30 @@ test('GET、HEAD、视频 Range 均鉴权，禁止缓存，不返回 MinIO 地�
 	assert.equal(head.status, 200);
 	assert.equal(head.headers['content-length'], '10');
 	assert.equal(head.body, '');
+});
+
+test('WMV 预览先鉴权，转换结果支持 HEAD 和 Range，原件仍可下载', async (t) => {
+	let calls = 0;
+	const f = await fixture(t, { videoPreview: async () => {
+		calls += 1;
+		return { objectKey: 'preview', mime: 'video/mp4' };
+	} });
+	f.objects.set('preview', Buffer.from('converted-mp4'));
+	const uploaded = await f.attachments.upload({ file: { ...f.file, name: '视频.wmv' }, uid: 12,
+		detected: { mime: 'video/x-ms-wmv', ext: 'wmv' } });
+	const url = `${uploaded.url}?preview=1`;
+	assert.equal((await f.send('HEAD', url, 13)).status, 404);
+	assert.equal(calls, 0);
+	const head = await f.send('HEAD', url, 12);
+	assert.equal(head.status, 200);
+	assert.equal(head.headers['content-type'], 'video/mp4');
+	assert.match(head.headers['content-disposition'], /^inline/);
+	const part = await f.send('GET', url, 12, { Range: 'bytes=0-8' });
+	assert.equal(part.status, 206);
+	assert.equal(part.body, 'converted');
+	const original = await f.send('GET', `${uploaded.url}?download=1`, 12);
+	assert.match(original.headers['content-disposition'], /^attachment/);
+	assert.equal(original.body, '0123456789');
 });
 
 test('普通文件强制下载；非法 ID、变体和不存在对象不暴露底层错误', async (t) => {

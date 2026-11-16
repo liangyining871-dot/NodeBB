@@ -2,14 +2,19 @@
 
 const { pipeline } = require('node:stream/promises');
 
-function createReadHandler({ attachments, getStorage, setSafeFileHeaders, inlineSvg = false }) {
+function createReadHandler({ attachments, getStorage, setSafeFileHeaders, inlineSvg = false, videoPreview }) {
 	return async function read(req, res) {
 		// 成功、错误、HEAD 和 Range 都禁止共享缓存，每次请求重新鉴权。
 		res.set('Cache-Control', 'private, no-store');
 		res.vary('Cookie').vary('Authorization');
 		let stream;
 		try {
-			const { record, file } = await attachments.getReadable(req.params.id, req.uid, req.params.variant);
+			let { record, file } = await attachments.getReadable(req.params.id, req.uid, req.params.variant);
+			// 先检查原件权限，再生成预览；转换完成后再次检查，防止等待期间权限变化。
+			if (req.query.preview === '1' && req.params.variant === 'original' && /\.wmv$/i.test(record.name)) {
+				file = await videoPreview(record);
+				await attachments.getReadable(req.params.id, req.uid, req.params.variant);
+			}
 			const { client, bucket } = getStorage();
 			const stat = await client.statObject(bucket, file.objectKey);
 			const size = Number(stat.size);
@@ -33,11 +38,12 @@ function createReadHandler({ attachments, getStorage, setSafeFileHeaders, inline
 			// 仅浏览器可安全展示的图片和常用视频内联，其余文件强制下载。
 			const inline = /^(image\/(jpeg|png|gif|webp|avif|x-icon|vnd.microsoft.icon)|video\/(mp4|webm|ogg))$/.test(file.mime) ||
 				(inlineSvg && file.mime === 'image/svg+xml');
-			res.attachment(record.name);
+			res.attachment(req.query.preview === '1' && file.mime === 'video/mp4' ? `${record.name}.mp4` : record.name);
 			if (inline) {
 				res.set('Content-Disposition', res.get('Content-Disposition').replace(/^attachment/, 'inline'));
 			}
 			setSafeFileHeaders(res, record.name);
+			if (req.query.download === '1') { res.attachment(record.name); }
 			res.type(file.mime);
 			// A directly opened video uses the browser's native media document, which
 			// must be allowed to fetch authenticated same-origin Range requests.

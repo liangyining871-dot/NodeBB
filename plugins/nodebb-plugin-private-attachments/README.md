@@ -61,7 +61,7 @@ node --env-file=.env plugins/nodebb-plugin-private-attachments/test/integration.
 - 核心上传入口新增 `filter:uploadPostFile`，复用原有扩展名检查、上传限额、限流及临时文件清理；
   插件检查登录身份、图片/文件上传权限、实际大小和图片尺寸，MIME 不信任浏览器声明。
 - 原件为 `<附件ID>/original.<扩展名>`，按论坛图片缩放设置生成的缩略图放在同一 ID 下。
-  图片 EXIF 处理沿用论坛设置；原件始终保留，视频原样存储，不转码或生成封面。
+  图片 EXIF 处理沿用论坛设置；原件始终保留，WMV 首次预览时转换为 MP4，不生成封面。
 - 返回 `url`、`name`、`attachmentId`、`originalUrl`，有缩略图时另含 `thumbnailUrl`。
   `url` 可直接供原编辑器使用；数据库和正文均不保存 MinIO 签名链接。
 - 元数据使用 NodeBB 数据库抽象写入 `privateAttachment:<ID>`，保存上传者、名称、MIME、大小、
@@ -72,6 +72,18 @@ node --env-file=.env plugins/nodebb-plugin-private-attachments/test/integration.
   服务端鉴权后代理文件流，普通文件强制下载，安全图片和常用视频可内联，禁止共享缓存。
 - GET 支持单段、尾部和开放结尾 Range；越界返回 416，多段或无法解析的 Range 忽略并返回完整文件。
   HEAD 返回完整资源头。所有变体及 Range 都进行同一鉴权，无权访问统一返回 404。
+
+## 视频预览
+
+- 帖子中的 MP4、WMV、WebM、OGG 附件显示预览卡片，点击弹窗播放，支持拖动进度及下载原件。
+- WMV 使用 FFmpeg 转换为 H.264/AAC MP4，保存在同一附件的 `preview` 变体；旧帖同样适用。
+  首次转换需要等待，后续复用结果；转换串行执行，同一附件的并发请求合并，失败可以重试。
+- 播放地址使用原附件 URL 加 `?preview=1`，下载使用 `?download=1`；每次请求检查原附件权限。
+  预览随附件复制和永久删除，未授权用户不能触发转换。
+- Docker 运行镜像已加入 FFmpeg，需重新构建镜像。非 Docker 环境请安装含 libx264/AAC 的 FFmpeg，
+  加入 PATH，或通过 `FFMPEG_PATH` 指定可执行文件路径；然后运行 `nodebb build` 并重启。
+  转换最长运行十分钟；反向代理的请求超时需覆盖首次转换等待时间。
+- MP4 直接播放，实际编码仍需浏览器支持；不兼容或预览失败时可下载原件。
 
 ## 帖子关联、图片及删除
 

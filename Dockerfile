@@ -29,6 +29,10 @@ RUN cp install/package.json package.json && sed -i 's/\r$//' install/docker/*.sh
 RUN bash install/docker/build-offline.sh
 
 FROM node:${NODE_VERSION}-bookworm-slim AS final
+# WMV 在线预览需要转换为浏览器通用的 MP4。
+RUN apt-get -o Acquire::Retries=3 update \
+    && apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production USER=nodebb UID=1001 GID=1001 \
     DAEMON=false SILENT=false PORT=9203 port=9203 OFFLINE_DEPLOYMENT=true \
     INITIAL_APPEARANCE_SNAPSHOT=/usr/src/app/install/docker/appearance.snapshot.json

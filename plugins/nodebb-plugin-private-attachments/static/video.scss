@@ -1,0 +1,21 @@
+.private-video-card {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: .75rem;
+	padding: 1rem;
+	border: 1px solid var(--bs-border-color, #ddd);
+	border-radius: .5rem;
+	max-width: 100%;
+	.private-video-name { overflow-wrap: anywhere; }
+}
+.private-video-dialog {
+	width: min(900px, 95vw);
+	border: 0;
+	border-radius: .5rem;
+	background: var(--bs-body-bg, white);
+	color: var(--bs-body-color, #222);
+	&::backdrop { background: #000a; }
+	video { display: block; width: 100%; max-height: 75vh; background: #000; }
+	.private-video-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+}

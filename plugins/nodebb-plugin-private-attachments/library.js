@@ -6,6 +6,7 @@ const { createReadHandler } = require('./routes');
 const { createLifecycle } = require('./lifecycle');
 const { createResources } = require('./resources');
 const { registerResourceRoutes } = require('./resource-routes');
+const { createVideoPreview } = require('./video');
 
 let storage;
 let attachments;
@@ -57,7 +58,8 @@ exports.init = async function ({ router, middleware }) {
 	});
 	attachments = createAttachments({ ...services, canRead: lifecycle.canRead });
 	// 先注册入口，即使存储检查失败也不回退到公开本地文件。
-	const read = createReadHandler({ attachments, getStorage, setSafeFileHeaders: middleware.uploads.setSafeFileHeaders });
+	const read = createReadHandler({ attachments, getStorage, setSafeFileHeaders: middleware.uploads.setSafeFileHeaders,
+		videoPreview: createVideoPreview({ db: services.db, getStorage }) });
 	router.get('/attachments/:id/:variant/:filename', middleware.authenticateRequest, middleware.redirectToHomeIfBanned, read);
 	registerResourceRoutes({ router, middleware, resources: getResources(), getStorage: exports.getStorage,
 		file: requireNodeBB('./src/file'), image: services.image, upload: requireNodeBB('./src/middleware/multer'),
