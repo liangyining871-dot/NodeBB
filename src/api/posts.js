@@ -73,9 +73,7 @@ postsAPI.getRaw = async (caller, { pid }) => {
 	}
 
 	const postData = await posts.getPostFields(pid, ['uid', 'content', 'sourceContent', 'deleted']);
-	const selfPost = caller.uid && String(caller.uid) === String(postData.uid);
-
-	if (postData.deleted && !(userPrivilege.isAdminOrMod || selfPost)) {
+	if (postData.deleted && !userPrivilege['posts:view_deleted']) {
 		return null;
 	}
 	postData.pid = pid;
@@ -205,7 +203,9 @@ async function deleteOrRestore(caller, data, params) {
 		await deleteOrRestoreTopicOf(params.command, data.pid, caller);
 	}
 
-	websockets.in(`topic_${postData.tid}`).emit(params.event, postData);
+	// 删除事件只广播定位信息，避免通过实时消息再次发送已删除的正文。
+	websockets.in(`topic_${postData.tid}`).emit(params.event, params.command === 'delete' ?
+		{ pid: postData.pid, tid: postData.tid, uid: postData.uid, deleted: postData.deleted } : postData);
 
 	await events.log({
 		type: params.type,

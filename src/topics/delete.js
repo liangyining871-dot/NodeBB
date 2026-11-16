@@ -33,6 +33,7 @@ module.exports = function (Topics) {
 			posts.getQueuedPosts({ tid }).then(items =>
 				Promise.all(items.map(item => posts.removeFromQueue(item.id)))),
 		]);
+		await categories.rebuildRecentTids(cid);
 	};
 
 	async function resolveTopicPostFlags(pids, uid) {

@@ -23,7 +23,7 @@ privsPosts.get = async function (pids, uid) {
 	if (!Array.isArray(pids) || !pids.length) {
 		return [];
 	}
-	const postData = await posts.getPostsFields(pids, ['tid', 'uid']);
+	const postData = await posts.getPostsFields(pids, ['tid', 'uid', 'deleted']);
 	const uniqTids = _.uniq(postData.map(p => p && p.tid).filter(Boolean));
 	const topicData = await topics.getTopicsFields(uniqTids, ['cid', 'uid', 'deleted', 'scheduled']);
 	const tidToTopic = _.zipObject(uniqTids, topicData);
@@ -55,14 +55,13 @@ privsPosts.get = async function (pids, uid) {
 		const topic = tidToTopic[post.tid] || {};
 		const { cid } = topic;
 		const isPostOwner = String(post.uid) === String(uid);
-		const isTopicOwner = String(topic.uid) === String(uid);
 		const isAdminOrMod = results.isAdmin || isModerator[cid];
 		const editable = (privData['posts:edit'][cid] && (isPostOwner || results.isModerator[i])) || results.isAdmin;
-		const viewDeletedPosts = isPostOwner || privData['posts:view_deleted'][cid] || results.isAdmin;
+		const viewDeletedPosts = results.isAdmin;
 		const viewHistory = isPostOwner || privData['posts:history'][cid] || results.isAdmin;
 
 		const canViewDeletedScheduled = privsTopics.canViewDeletedScheduled(topic, {
-			view_deleted: results.isAdmin || isTopicOwner || privData['posts:view_deleted'][cid],
+			view_deleted: results.isAdmin,
 			view_scheduled: results.isAdmin || privData['topics:schedule'][cid],
 		});
 
@@ -70,7 +69,7 @@ privsPosts.get = async function (pids, uid) {
 			editable: editable,
 			move: isAdminOrMod,
 			isAdminOrMod: isAdminOrMod,
-			'topics:read': results.isAdmin || (privData['topics:read'][cid] && canViewDeletedScheduled),
+			'topics:read': results.isAdmin || (privData['topics:read'][cid] && canViewDeletedScheduled && !post.deleted),
 			read: privData.read[cid] || results.isAdmin,
 			'posts:history': viewHistory,
 			'posts:view_deleted': viewDeletedPosts,
@@ -83,7 +82,8 @@ privsPosts.get = async function (pids, uid) {
 
 privsPosts.can = async function (privilege, pid, uid) {
 	const cid = await posts.getCidByPid(pid);
-	return await privsCategories.can(privilege, cid, uid);
+	const allowed = await privsCategories.can(privilege, cid, uid);
+	return allowed && (!['read', 'topics:read'].includes(privilege) || await privsPosts.canRead(pid, uid));
 };
 
 privsPosts.filter = async function (privilege, pids, uid) {
@@ -135,8 +135,9 @@ privsPosts.filter = async function (privilege, pids, uid) {
 };
 
 privsPosts.canRead = async function (pid, uid) {
-	const tid = await posts.getPostField(pid, 'tid');
-	return await privsTopics.canRead(tid, uid);
+	const post = await posts.getPostFields(pid, ['tid', 'deleted']);
+	if (!post?.tid || (post.deleted && !await user.isAdministrator(uid))) { return false; }
+	return await privsTopics.canRead(post.tid, uid);
 };
 
 privsPosts.canEdit = async function (pid, uid) {

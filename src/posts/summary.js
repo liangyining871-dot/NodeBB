@@ -41,6 +41,10 @@ module.exports = function (Posts) {
 		const uidToUser = toObject('uid', users);
 		const tidToTopic = toObject('tid', topicsAndCategories.topics);
 		const cidToCategory = toObject('cid', topicsAndCategories.categories);
+		if (!await user.isAdministrator(uid)) {
+			posts = posts.filter(post => !post.deleted &&
+				(!tidToTopic[post.tid]?.deleted || tidToTopic[post.tid]?.scheduled));
+		}
 
 		posts.forEach((post) => {
 			// If the post author isn't represented in the retrieved users' data,

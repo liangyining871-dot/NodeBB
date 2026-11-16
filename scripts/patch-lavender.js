@@ -23,6 +23,7 @@ function translate(source) {
 
 // 首页摘要保留文字，另显示首个媒体附件；该补丁随安装和镜像构建重复应用。
 function addMediaPreview(source) {
+	source = source.replace('component="category/posts" class=', 'component="category/posts" data-tid="{./tid}" class=');
 	if (source.includes('category-media-preview')) { return source; }
 	const marker = '<hr class="mb-2 mt-1" />';
 	if (!source.includes(marker)) { throw new Error('Lavender category preview template changed'); }

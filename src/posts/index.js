@@ -48,6 +48,7 @@ Posts.getPostsByPids = async function (pids, uid) {
 	}
 
 	let posts = await Posts.getPostsData(pids);
+	if (!await user.isAdministrator(uid)) { posts = posts.filter(post => post && !post.deleted); }
 	posts = await Promise.all(posts.map(Posts.parsePost));
 	const data = await plugins.hooks.fire('filter:post.getPosts', { posts: posts, uid: uid });
 	if (!data || !Array.isArray(data.posts)) {
@@ -97,7 +98,7 @@ Posts.getPostIndices = async function (posts, uid) {
 
 Posts.modifyPostByPrivilege = function (post, privileges) {
 	if (post && privileges) {
-		if (post.deleted && !(post.selfPost || privileges['posts:view_deleted'])) {
+		if (post.deleted && !privileges['posts:view_deleted']) {
 			Posts.clearDeletedPostContent(post);
 			if (post.user) {
 				post.user.signature = '';

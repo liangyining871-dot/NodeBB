@@ -6,11 +6,12 @@ const benchpress = require('benchpressjs');
 const { translate, addMediaPreview } = require('../scripts/patch-lavender');
 
 test('首页媒体预览补丁可重复应用，模板能够编译', async () => {
-	const template = '<hr class="mb-2 mt-1" />';
+	const template = '<div component="category/posts" class="post-preview"><hr class="mb-2 mt-1" /></div>';
 	const updated = addMediaPreview(template);
 	assert.equal(addMediaPreview(updated), updated);
 	assert.ok(updated.includes('mediaPreview.url'));
 	assert.ok(updated.includes('loading="lazy"'));
+	assert.ok(updated.includes('data-tid="{./tid}"'));
 	assert.ok(await benchpress.precompile(updated, { filename: 'category-preview.tpl' }));
 });
 

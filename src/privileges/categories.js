@@ -134,10 +134,11 @@ privsCategories.get = async function (cid, uid) {
 
 	return await plugins.hooks.fire('filter:privileges.categories.get', {
 		...privData,
+		'posts:view_deleted': isAdministrator,
 		cid: cid,
 		uid: uid,
 		editable: isAdminOrMod,
-		view_deleted: isAdministrator || privData['posts:view_deleted'],
+		view_deleted: isAdministrator,
 		view_scheduled : isAdministrator || privData['topics:schedule'],
 		isAdminOrMod: isAdminOrMod,
 		disabled,
@@ -174,6 +175,7 @@ privsCategories.isUserAllowedTo = async function (privilege, cid, uid) {
 };
 
 privsCategories.can = async function (privilege, cid, uid) {
+	if (privilege === 'posts:view_deleted') { return await user.isAdministrator(uid); }
 	if (!Number.isInteger(cid) && typeof cid !== 'string') {
 		return Array.isArray(privilege) ? privilege.map(() => false) : false;
 	}
@@ -207,13 +209,16 @@ privsCategories.filterCids = async function (privilege, cids, uid) {
 };
 
 privsCategories.getBase = async function (privilege, cids, uid) {
-	return await utils.promiseParallel({
+	const result = await utils.promiseParallel({
 		categories: categories.getCategoriesFields(cids, ['disabled']),
 		allowedTo: helpers.isAllowedTo(privilege, uid, cids),
 		view_deleted: helpers.isAllowedTo('posts:view_deleted', uid, cids),
 		view_scheduled: helpers.isAllowedTo('topics:schedule', uid, cids),
 		isAdmin: user.isAdministrator(uid),
 	});
+	// 列表、搜索和附件校验共用此权限，忽略历史版块授权。
+	result.view_deleted = cids.map(() => result.isAdmin);
+	return result;
 };
 
 privsCategories.filterUids = async function (privilege, cid, uids) {

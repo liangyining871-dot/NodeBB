@@ -9,6 +9,27 @@ const user = require('../user');
 const utils = require('../utils');
 
 module.exports = function (Categories) {
+	// 同一次请求共用可见主题，先过滤再分页，避免删除项占位或产生空白页。
+	const visibleTopics = new WeakMap();
+	function getVisibleTopicIds(data) {
+		if (!visibleTopics.has(data)) {
+			visibleTopics.set(data, (async () => {
+				if (await user.isAdministrator(data.uid)) { return null; }
+				const [pinned, set] = await Promise.all([
+					Categories.getPinnedTids({ ...data, start: 0, stop: -1 }),
+					Categories.buildTopicsSortedSet(data),
+				]);
+				const normal = Array.isArray(set) ? await db.getSortedSetRevIntersect({
+					sets: set, start: 0, stop: -1,
+					weights: set.map((value, index) => (index ? 0 : 1)),
+				}) : await db.getSortedSetRevRange(set, 0, -1);
+				const allowed = await privileges.topics.filterTids('topics:read',
+					[...new Set([...pinned, ...normal].map(String))], data.uid);
+				return allowed.map(String);
+			})());
+		}
+		return visibleTopics.get(data);
+	}
 	Categories.getCategoryTopics = async function (data) {
 		let results = await plugins.hooks.fire('filter:category.topics.prepare', data);
 		const tids = await Categories.getTopicIds(results);
@@ -25,6 +46,8 @@ module.exports = function (Categories) {
 	};
 
 	Categories.getTopicIds = async function (data) {
+		const visible = await getVisibleTopicIds(data);
+		if (visible) { return visible.slice(data.start, data.stop === -1 ? undefined : data.stop + 1); }
 		const [pinnedTids, set] = await Promise.all([
 			Categories.getPinnedTids({ ...data, start: 0, stop: -1 }),
 			Categories.buildTopicsSortedSet(data),
@@ -70,6 +93,8 @@ module.exports = function (Categories) {
 	};
 
 	Categories.getTopicCount = async function (data) {
+		const visible = await getVisibleTopicIds(data);
+		if (visible) { return visible.length; }
 		if (plugins.hooks.hasListeners('filter:categories.getTopicCount')) {
 			const result = await plugins.hooks.fire('filter:categories.getTopicCount', {
 				topicCount: data.category.topic_count,
@@ -163,17 +188,9 @@ module.exports = function (Categories) {
 			return;
 		}
 
-		topics.forEach((topic) => {
-			if (topic && !topic.scheduled && topic.deleted && !topic.isOwner) {
-				topic.title = '[[topic:topic-is-deleted]]';
-				topic.txTitle = true;
-				topic.slug = topic.tid;
-				topic.teaser = null;
-				topic.noAnchor = true;
-				topic.unread = false;
-				topic.tags = [];
-			}
-		});
+		for (let index = topics.length - 1; index >= 0; index -= 1) {
+			if (topics[index]?.deleted && !topics[index].scheduled) { topics.splice(index, 1); }
+		}
 	};
 
 	Categories.onNewPostMade = async function (cid, pinned, postData) {

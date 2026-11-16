@@ -205,10 +205,13 @@ define('forum/topic/events', [
 	function togglePostDeleteState(data) {
 		const postEl = components.get('post', 'pid', data.pid);
 
-		const { isAdminOrMod } = ajaxify.data.privileges;
-		const isSelfPost = String(data.uid) === String(app.user.uid);
-		const canSeeDeleted = isAdminOrMod || isSelfPost;
+		const canSeeDeleted = app.user.isAdmin;
 		const isDeleted = !!data.deleted;
+		if (isDeleted && !canSeeDeleted) {
+			postEl.remove();
+			$(`[component="post/parent"][data-parent-pid="${data.pid}"]`).remove();
+			return;
+		}
 		if (postEl.length) {
 			postEl.toggleClass('deleted');
 			postTools.toggle(data.pid, isDeleted);

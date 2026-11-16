@@ -346,6 +346,11 @@ define('forum/topic/threadTools', [
 		if (String(data.tid) !== threadEl.attr('data-tid')) {
 			return;
 		}
+		if (data.isDelete && !app.user.isAdmin) {
+			// 普通用户删除后直接离开主题，不呈现软删除提示。
+			ajaxify.go(`category/${ajaxify.data.category.slug}`, null, true);
+			return;
+		}
 
 		components.get('topic/delete').toggleClass('hidden', data.isDelete).parent().attr('hidden', data.isDelete ? '' : null);
 		components.get('topic/restore').toggleClass('hidden', !data.isDelete).parent().attr('hidden', !data.isDelete ? '' : null);

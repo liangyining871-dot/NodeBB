@@ -157,7 +157,9 @@ Topics.getTopicsByTids = async function (tids, options) {
 		}
 	});
 
-	const filteredTopics = result.topics.filter(topic => topic && topic.category && !topic.category.disabled);
+	const isAdmin = await user.isAdministrator(uid);
+	const filteredTopics = result.topics.filter(topic => topic && topic.category && !topic.category.disabled &&
+		(!topic.deleted || topic.scheduled || isAdmin));
 
 	const hookResult = await plugins.hooks.fire('filter:topics.get', { topics: filteredTopics, uid: uid });
 	return hookResult.topics;

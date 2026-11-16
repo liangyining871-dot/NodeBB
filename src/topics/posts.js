@@ -198,8 +198,10 @@ module.exports = function (Topics) {
 
 		await Promise.all(parentPosts.map(async (parentPost) => {
 			const postPrivs = pidToPrivs[parentPost.pid];
-			if (parentPost.deleted && String(parentPost.uid) !== String(callerUid, 10) && !postPrivs['posts:view_deleted']) {
-				posts.clearDeletedPostContent(parentPost);
+			if (parentPost.deleted && !postPrivs['posts:view_deleted']) {
+				// 引用预览也不显示“已删除”占位，保留普通回复本身。
+				parentPost.content = '';
+				parentPost.sourceContent = '';
 				return;
 			}
 			const foundPost = postData.find(p => String(p.pid) === String(parentPost.pid));

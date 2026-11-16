@@ -14,6 +14,7 @@ module.exports = function (Posts) {
 	};
 
 	async function togglePostDelete(uid, pid, isDelete) {
+		if (!isDelete && !await require('../user').isAdministrator(uid)) { throw new Error('[[error:no-privileges]]'); }
 		const [postData, canDelete] = await Promise.all([
 			Posts.getPostData(pid),
 			privileges.posts.canDelete(pid, uid),

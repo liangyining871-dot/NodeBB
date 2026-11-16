@@ -131,12 +131,14 @@ module.exports = function (Categories) {
 		const [topicData, crossposts] = await Promise.all([
 			topics.getTopicsFields(
 				tids,
-				['tid', 'uid', 'mainPid', 'slug', 'title', 'teaserPid', 'cid', 'postcount']
+				['tid', 'uid', 'mainPid', 'slug', 'title', 'teaserPid', 'cid', 'postcount', 'deleted', 'scheduled']
 			),
 			topics.crossposts.get(tids, uid),
 		]);
 
-		topicData.forEach((topic) => {
+		topicData.forEach((topic, index) => {
+			// 首页预览仅展示正常主题，管理员也不在板块卡片中看到删除提示。
+			if (topic?.deleted || topic?.scheduled) { topicData[index] = null; return; }
 			if (topic) {
 				topic.teaserPid = topic.teaserPid || topic.mainPid;
 			}

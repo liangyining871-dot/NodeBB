@@ -270,8 +270,10 @@ define('forum/category/tools', [
 
 	function setDeleteState(data) {
 		const topic = getTopicEl(data.tid);
-		topic.toggleClass('deleted', data.isDeleted);
-		topic.find('[component="topic/locked"]').toggleClass('hidden', !data.isDeleted);
+		const isDeleted = Boolean(data.isDelete ?? data.isDeleted);
+		if (isDeleted && !app.user.isAdmin) { topic.remove(); return; }
+		topic.toggleClass('deleted', isDeleted);
+		topic.find('[component="topic/locked"]').toggleClass('hidden', !isDeleted);
 	}
 
 	function setPinnedState(data) {

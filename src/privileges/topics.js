@@ -67,7 +67,7 @@ privsTopics.get = async function (tid, uid) {
 		'posts:upvote': privData['posts:upvote'] || isAdministrator,
 		'posts:downvote': privData['posts:downvote'] || isAdministrator,
 		'posts:delete': (privData['posts:delete'] && (!topicData.locked || isModerator)) || isAdministrator,
-		'posts:view_deleted': privData['posts:view_deleted'] || isAdministrator,
+		'posts:view_deleted': isAdministrator,
 		read: privData.read || isAdministrator,
 		purge: (privData.purge && (isOwner || isModerator)) || isAdministrator,
 
@@ -75,7 +75,8 @@ privsTopics.get = async function (tid, uid) {
 		editable: editable,
 		deletable: deletable,
 		canMoveOwnTopic: canMoveOwnTopic,
-		view_deleted: isAdministrator || isOwner || privData['posts:view_deleted'],
+		// 软删除仅管理员可见，作者和版主也不保留例外。
+		view_deleted: isAdministrator,
 		view_scheduled: privData['topics:schedule'] || isAdministrator,
 		isAdminOrMod: isAdminOrMod,
 		disabled: disabled,

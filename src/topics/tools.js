@@ -33,6 +33,7 @@ module.exports = function (Topics) {
 			throw new Error('[[error:invalid-data]]');
 		}
 		const canDelete = await privileges.topics.canDelete(tid, uid);
+		if (!isDelete && !await user.isAdministrator(uid)) { throw new Error('[[error:no-privileges]]'); }
 
 		const hook = isDelete ? 'delete' : 'restore';
 		const data = await plugins.hooks.fire(`filter:topic.${hook}`, { topicData: topicData, uid: uid, isDelete: isDelete, canDelete: canDelete, canRestore: canDelete });

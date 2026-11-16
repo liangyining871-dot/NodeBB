@@ -13,28 +13,15 @@ node --env-file=.env .\nodebb dev #再次启动
 
 ## 蓝区：构建镜像并导出
 
-部署前先更新快照并检查，使用上面的 Node.js 24 路径。外观快照只包含主题、插件、导航、外观和上传策略，
-不包含帖子、用户、版块结构、版块的摘要数量设置、PostgreSQL 数据和 MinIO 对象；需要迁移内容时单独备份恢复。
-当前上传上限为 102400 KB（100 MiB，104857600 字节），适用于图片之外的普通文件附件，已验证 Windows 本地与 Linux 容器。
-首次初始化自动应用镜像里的快照，已有生产数据库升级不会覆盖原有设置。
-
 ```powershell
 node --env-file=.env scripts/export-appearance.js
 node --env-file=.env .\nodebb build --series
 node scripts/check-deployment.js --compose
 ```
 
-上传白名单应包含 MP4、WMV、WebM、OGG。已有站点若需要补齐白名单，可先停止论坛，
-运行 `node --env-file=.env scripts/configure-posting.js --apply`，再导出快照；该命令会备份原设置，
-同时沿用本项目既定策略：关闭发帖审核、允许注册用户上传文件，不改变大小上限。
-
-镜像内包含 FFmpeg，构建会自动验证真实 WMV 转 MP4、封面提取及首页媒体预览资源；
-Windows 的 `.env`、`config.json`、本地测试账户文件和上传文件不会打进镜像。
-
 ```powershell
 docker build -t nodebb-nodebb:latest .
 docker save nodebb-nodebb:latest -o D:\deploy-export\nodebb.tar
-Get-FileHash D:\deploy-export\nodebb.tar -Algorithm SHA256
 ```
 
 构建和导出应都成功后再传输。保存上一个发布镜像及其对应的数据库、MinIO、配置备份用于回退，
@@ -91,7 +78,7 @@ docker compose -f docker-compose.production.yml up -d nodebb
 docker compose -f docker-compose.production.yml ps
 docker compose -f docker-compose.production.yml logs -f --tail 100 nodebb
 ```
-访问 `http://aixsilicon.developers.hisilicon.com:9203/`，管理后台为 `/admin`。确保域名指向服务器且允许访问 9203 端口。健康检查仅确认 HTTP 响应，不能代替登录、附件上传等功能验收；unhealthy 状态不会自动触发 Docker 重启。
+
 
 ## 服务器后续更新（不再 setup）
 先在部署目录执行 `docker compose -f docker-compose.production.yml stop nodebb`，再备份 PostgreSQL、MinIO 对象、`.docker/config` 和 `.docker/public/uploads`。替换 `docker_images/nodebb.tar`；仅配置变化时同步 Compose，并保留生产连接信息。然后执行：
@@ -99,36 +86,10 @@ docker compose -f docker-compose.production.yml logs -f --tail 100 nodebb
 docker load -i docker_images/nodebb.tar
 docker compose -f docker-compose.production.yml up -d --force-recreate nodebb
 ```
-更新时保留 `.docker`，不要重新执行首次初始化。
 
-已有站点的白名单不会随镜像更新。需要补齐 WMV 等格式时，停服备份后执行以下一次性配置命令，
-它也会关闭发帖审核、允许注册用户上传文件；显式指定参数将已有站点的附件上限调整为 100 MiB：
 ```sh
 docker compose -f docker-compose.production.yml run --rm --no-deps --entrypoint node nodebb scripts/configure-posting.js --apply --max-file-size-kb=102400
 ```
-
-升级启动会执行数据库迁移，因此回退不应只更换旧镜像；需要按同一备份时间点恢复数据库、
-MinIO 对象及 `.docker/config`。不要执行 `docker compose down -v` 删除持久数据。
-
-## 上线验收
-
-- 验证首页、企业登录和登录超时；后台 `/login?local=1` 的本地管理入口仍可使用。
-- 验证图片上传、首页图片缩略图、MP4 点击封面直接播放、拖动进度，以及 WMV 首次转换和后续复用。
-- 验证首页视频封面、刷新后复用，以及无权限用户不能读取图片、封面、原视频或 Range 分段。
-- 大视频首次转换可能耗时，反向代理的读取超时应覆盖转换等待（当前转换超时为十分钟），
-  代理应透传 Range/Content-Range；上传体积限制需大于单文件 100 MiB，预留 multipart 表单开销。
-  例如 Nginx 可使用 `client_max_body_size 110m; client_body_timeout 600s; proxy_read_timeout 600s; proxy_send_timeout 600s;`。
-  Compose 当前直接暴露 9203 端口，不包含 Nginx；有网关时需要在实际网关同步调整。
-- MinIO 请求等待默认五分钟，使用 `MINIO_REQUEST_TIMEOUT_MS` 调整；视频转码仍保留十分钟上限。
-
-## 100 MiB 手动集成验证
-
-`scripts/test-large-upload.js <样本目录> --generate` 通过 FFmpeg 生成约 100 MiB 的有效 MP4、WMV，
-以及恰好 100 MiB、超出一字节的边界文件。然后加载本地 `.env` 运行同一脚本并加 `--video`，
-验证原生 multipart 上传、真实 PostgreSQL/MinIO、完整下载 SHA-256、HEAD、Range、权限、封面及 WMV 转码。
-目标大小只作用于测试进程，不写数据库；本次创建的随机附件会自动清理。
-Linux 验证使用与生产相同的镜像，提供测试专用数据库/MinIO 环境变量和可写样本目录，不对生产数据库运行此测试。
-
 # 重启
 docker compose -f docker-compose.production.yml restart nodebb
 
