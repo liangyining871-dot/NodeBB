@@ -1,11 +1,13 @@
 .?*
 logs
 test
+tests
 node_modules
 build
 pidfile
 backups
 docker_images
+release
 *.tar
 commitlint.config.js
 nodebb.bat

@@ -13,7 +13,7 @@ test('posting repair disables review and grants only registered-user file upload
 	});
 	assert.equal(config.postQueue, 0);
 	assert.equal(config.maximumFileSize, 2048);
-	assert.equal(config.allowedFileExtensions, 'mp4,png,pdf,doc,docx,xls,xlsx,ppt,pptx,csv,md');
+	assert.equal(config.allowedFileExtensions, 'mp4,png,pdf,doc,docx,xls,xlsx,ppt,pptx,csv,md,wmv,webm,ogg');
 	assert.deepEqual(grants, [[['groups:upload:post:file'], 'registered-users']]);
 });
 

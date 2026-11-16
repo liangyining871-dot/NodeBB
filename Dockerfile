@@ -31,7 +31,10 @@ RUN bash install/docker/build-offline.sh
 FROM node:${NODE_VERSION}-bookworm-slim AS final
 # WMV 在线预览需要转换为浏览器通用的 MP4。
 RUN apt-get -o Acquire::Retries=3 update \
-    && apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg \
+    && for attempt in 1 2 3; do \
+         if DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg; then break; fi; \
+         test "$attempt" != 3 || exit 1; \
+       done \
     && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production USER=nodebb UID=1001 GID=1001 \
     DAEMON=false SILENT=false PORT=9203 port=9203 OFFLINE_DEPLOYMENT=true \
@@ -44,5 +47,6 @@ COPY --from=build /usr/bin/tini /usr/local/bin/tini
 COPY --from=build /usr/src/app/install/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/tini
 USER nodebb
+RUN node scripts/check-deployment.js --image
 EXPOSE 9203
 ENTRYPOINT ["tini", "--", "entrypoint.sh"]

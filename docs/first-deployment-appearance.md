@@ -1,6 +1,6 @@
 # 内网首次部署外观基线
 
-2026-11-12 从当前本地 PostgreSQL 以只读事务核对并导出。
+2026-11-16 从当前本地 PostgreSQL 以只读事务重新核对并导出。
 配置快照：`install/docker/appearance.snapshot.json`。这不是 NodeBB 自带的 setup.json 格式，由项目的首次初始化逻辑自动应用。
 
 Dockerfile 已设置 `INITIAL_APPEARANCE_SNAPSHOT=/usr/src/app/install/docker/appearance.snapshot.json`。
@@ -19,6 +19,8 @@ Windows 直接运行的首次 setup 默认也读取仓库内快照；环境变�
 - web-push 未启用。Uniportal 插件处于启用列表不代表企业认证环境变量已配置。
 - 保留当前运行策略：activitypubEnabled、postDelay、newbiePostDelay、initialPostDelay 均为 0。
 - requireEmailAddress=0 与本地一致。企业账号通过 Uniportal 插件关闭缺少邮箱提示；本地管理员的邮箱提醒保留。
+- postQueue=0；文件白名单包含 MP4、WMV、WebM、OGG，上传上限保持 2048 KB（2 MB）。
+- 镜像包含首页图片/视频封面预览、帖子内直接播放及 FFmpeg，构建时实际验证 WMV 转换和封面提取。
 
 ## 首次初始化应用顺序
 
@@ -42,6 +44,7 @@ Windows 直接运行的首次 setup 默认也读取仓库内快照；环境变�
 
 ```powershell
 node --env-file=.env scripts/export-appearance.js
+node scripts/check-deployment.js --compose
 ```
 
 该命令只读数据库，覆盖快照文件。发布前检查导航、小工具和自定义 HTML 中是否含本地绝对地址或敏感信息；当前快照已人工检查。

@@ -78,4 +78,4 @@ function createVideoPreview({ db, getStorage, convert = convertVideo, poster = e
 	};
 }
 
-module.exports = { createVideoPreview, convertVideo };
+module.exports = { createVideoPreview, convertVideo, extractPoster };
