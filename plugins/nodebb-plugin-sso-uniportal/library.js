@@ -261,6 +261,11 @@ exports.navigationHeader = async function (data) {
 	// Brand artwork is not a square profile photo: fit the complete mark instead
 	// of stretching or clipping it with the theme's avatar presentation.
 	values.useCustomCSS = true;
+	values.customCSS = `${values.customCSS || ''}
+.navbar-brand .forum-logo { display: block !important; height: 28px !important; max-height: 28px !important; width: auto !important; max-width: 44px; object-fit: contain; transform: translateY(-1px); }
+.navbar-brand:has(> .forum-logo), .navbar-brand:has(> .forum-logo) + .navbar-brand { display: inline-flex; align-items: center; align-self: center; height: 40px; padding-block: 0; margin-block: 0; }
+.navbar-brand:has(> .forum-logo) { flex-shrink: 0; margin-inline-end: 10px; }
+.navbar-brand:has(> .forum-logo) + .navbar-brand { font-size: 20px; font-weight: 600; line-height: 1.2; letter-spacing: 0; }`;
 	values.customCSS = `${values.customCSS || ''}\n[data-nid] img.avatar[src*="/assets/brand/"], [data-nid] img.avatar[src*="/uploads/system/site-logo"] { width: 32px; height: 32px; max-width: 32px; object-fit: contain; object-position: center; border-radius: 0; flex-shrink: 0; }`;
 	const uid = Number(data.req.uid);
 	if (!(uid > 0) || values.user?.isAdmin || values.user?.isGlobalMod || values.user?.isMod) { return data; }
