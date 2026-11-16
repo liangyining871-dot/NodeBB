@@ -25,7 +25,9 @@ navigation.get = async function (uid) {
 		}
 		return await groups.isMemberOfAny(uid, navItem.groups);
 	}));
-	return data.filter((navItem, i) => pass[i]);
+	const existing = data.filter((navItem, i) => pass[i] &&
+		![`${relative_path}/categories`, `${relative_path}/recent`].includes(navItem.route));
+	return [...await require('./boards')(uid), ...existing];
 };
 
 require('../promisify')(navigation);

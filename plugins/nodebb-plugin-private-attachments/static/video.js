@@ -3,6 +3,7 @@
 $(function () {
 	let activeVideo;
 	function decorate() {
+		updateBoardNavigation();
 		$('.category-media-preview').each(function () {
 			if (this.dataset.mediaReady) { return; }
 			this.dataset.mediaReady = '1';
@@ -41,6 +42,18 @@ $(function () {
 			$(this).replaceWith(card);
 			play.on('click', () => playInline(card, cover, url, name, posterUrl.href));
 			cover.on('click', () => playInline(card, cover, url, name, posterUrl.href));
+		});
+	}
+
+	function updateBoardNavigation() {
+		const data = typeof ajaxify === 'undefined' ? {} : ajaxify.data || {};
+		const cid = new URLSearchParams(location.search).get('cid') ||
+			(data.template?.category || data.template?.topic ? String(data.cid || '') : '');
+		const isFeed = location.pathname === `${config.relative_path}/` ||
+			location.pathname === `${config.relative_path}/recent` || Boolean(cid);
+		$('#main-nav .board-navigation a').each(function () {
+			const selected = isFeed && (new URL(this.href).searchParams.get('cid') || '') === cid;
+			$(this).toggleClass('active', selected).attr('aria-current', selected ? 'page' : null);
 		});
 	}
 
@@ -115,7 +128,7 @@ $(function () {
 		});
 	}
 
-	$(window).on('action:ajaxify.end action:posts.loaded action:posts.edited', decorate);
+	$(window).on('action:ajaxify.end action:posts.loaded action:posts.edited action:topics.loaded', decorate);
 	$(window).on('action:ajaxify.start', () => {
 		// 切换页面时停止播放和下载。
 		$('.private-video-card video, .category-media-preview video').each(function () {

@@ -11,7 +11,7 @@ Windows 直接运行的首次 setup 默认也读取仓库内快照；环境变�
 
 - NodeBB 4.16.7；主题 `nodebb-theme-lavender@8.1.2`，使用 `scripts/patch-lavender.js` 兼容补丁。
 - 站点及浏览器标题：AIXSILICON广场；显示站点标题。
-- 默认语言 zh-CN，关闭自动检测语言；首页 categories。
+- 默认语言 zh-CN，关闭自动检测语言；首页 recent，顶部动态板块导航，下方按权限展示主题列表。
 - Logo `/assets/brand/huawei-emblem-transparent.png`，替代文字 HUAWEI，链接 `/`；图片已在 `public/brand/`。
 - 未设置额外 Bootswatch 皮肤；数据库未配置自定义 CSS、HTML、JS。
 - 每页主题/帖子 20，每页分类 50。其余已导出的外观字段、导航顺序和小工具内容见快照。

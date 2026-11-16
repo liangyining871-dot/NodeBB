@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "exportedAt": "2026-11-16T02:46:22.722Z",
+  "exportedAt": "2026-11-16T08:27:23.165Z",
   "nodebbVersion": "4.16.7",
   "targetUrl": "http://aixsilicon.developers.hisilicon.com:9203",
   "config": {
@@ -22,7 +22,7 @@
     "postsPerPage": 20,
     "tinyconColor": "#ffffff",
     "brand:favicon": "",
-    "homePageRoute": "categories",
+    "homePageRoute": "recent",
     "homePageTitle": "",
     "showSiteTitle": 1,
     "topicsPerPage": 20,

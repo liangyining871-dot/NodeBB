@@ -56,6 +56,8 @@ recentController.getData = async function (req, url, sort, selectedTerm = 'allti
 		sort: sort,
 		floatPinned: req.query.pinned,
 		query: req.query,
+		// 新首页沿用 recent 的分页与排序，但“全部”不受最近主题数量上限影响。
+		allVisible: url === 'recent',
 	});
 
 	const isDisplayedAsHome = !(req.originalUrl.startsWith(`${relative_path}/api/${url}`) || req.originalUrl.startsWith(`${relative_path}/${url}`));
@@ -66,6 +68,10 @@ recentController.getData = async function (req, url, sort, selectedTerm = 'allti
 	} else {
 		data.title = `[[pages:${url}]]`;
 		data.breadcrumbs = helpers.buildBreadcrumbs([{ text: `[[${url}:title]]` }]);
+	}
+	if (url === 'recent') {
+		data.title = categoryData.selectedCategory?.name || '全部主题';
+		data.breadcrumbs = isDisplayedAsHome ? [] : helpers.buildBreadcrumbs([{ text: data.title }]);
 	}
 
 	const query = { ...req.query };

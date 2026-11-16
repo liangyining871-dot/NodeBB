@@ -52,11 +52,21 @@ async function patch() {
 				const original = await fs.readFile(filename, 'utf8');
 				let updated = translate(original);
 				if (entry.name === 'category_child.tpl') { updated = addMediaPreview(updated); }
+				if (entry.name === 'topics_list.tpl') {
+					// 默认页和板块页共用原生主题列表入口，仅替换为统一卡片模板。
+					updated = await fs.readFile(path.join(root,
+						'plugins/nodebb-plugin-private-attachments/templates/topic-cards.tpl'), 'utf8');
+				}
 				if (updated !== original) { await fs.writeFile(filename, updated); count += 1; }
 			}
 		}
 	}
 	await walk(path.join(theme, 'templates'));
+	// 覆盖继承的搜索模板，保持输入框常驻，无需改动原生搜索脚本。
+	const searchTemplate = path.join(theme, 'templates/partials/header/search.tpl');
+	await fs.mkdir(path.dirname(searchTemplate), { recursive: true });
+	await fs.writeFile(searchTemplate, await fs.readFile(path.join(root,
+		'plugins/nodebb-plugin-private-attachments/templates/header-search.tpl'), 'utf8'));
 	console.log(`Lavender 8.1.2 translation compatibility: ${count} template files updated.`);
 }
 

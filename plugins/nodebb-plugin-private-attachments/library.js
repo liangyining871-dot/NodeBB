@@ -80,6 +80,16 @@ exports.init = async function ({ router, middleware }) {
 
 exports.resourceStorage = async data => await getResources().storage(data);
 exports.previewSummaries = async data => (previewSummaries ? await previewSummaries(data) : data);
+exports.previewTopics = async (data) => {
+	if (!previewSummaries || !data.topics?.length) { return data; }
+	// 列表以主帖为封面来源，复用摘要取图及附件鉴权，不因最后一条回复无图而丢失封面。
+	const pending = data.topics.filter(topic => String(topic.teaser?.pid) !== String(topic.mainPid));
+	data.topics.forEach((topic) => { topic.mediaPreview = topic.teaser?.mediaPreview; });
+	const teasers = pending.map(topic => ({ pid: topic.mainPid }));
+	await previewSummaries({ teasers, uid: data.uid });
+	pending.forEach((topic, index) => { topic.mediaPreview = teasers[index].mediaPreview; });
+	return data;
+};
 exports.deleteUserResources = async data => { await getResources().deleteOwner('user', data.uid); return data; };
 exports.deleteCategoryResources = async data => { await getResources().deleteOwner('category', data.cid); return data; };
 exports.renameGroupResources = async data => { await getResources().renameOwner('group', data.old, data.new); return data; };

@@ -13,6 +13,10 @@ node --env-file=.env .\nodebb dev #再次启动
 
 ## 蓝区：构建镜像并导出
 
+当前布局初版使用 `recent` 作为默认首页：顶部按用户权限动态展示板块，下面复用主题列表和媒体预览。
+已有站点需要切换默认首页时，停服后执行 `node --env-file=.env scripts/configure-topic-home.js --apply`，
+该命令只修改 `homePageRoute` 并备份原值；不改主题数据和板块权限。修改后重新导出快照、构建并重启。
+
 ```powershell
 node --env-file=.env scripts/export-appearance.js
 node --env-file=.env .\nodebb build --series

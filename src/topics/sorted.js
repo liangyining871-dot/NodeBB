@@ -31,7 +31,8 @@ module.exports = function (Topics) {
 		data.tids = await getTids(params);
 		data.tids = await getInbox(data.tids, params);
 		data.tids = await sortTids(data.tids, params);
-		data.tids = await filterTids(data.tids.slice(0, meta.config.recentMaxTopics), params);
+		const candidates = params.allVisible ? data.tids : data.tids.slice(0, meta.config.recentMaxTopics);
+		data.tids = await filterTids(candidates, params);
 		data.topicCount = data.tids.length;
 		data.topics = await getTopics(data.tids, params);
 		data.nextStart = params.stop + 1;
@@ -68,7 +69,7 @@ module.exports = function (Topics) {
 			const method = params.sort === 'old' ?
 				'getSortedSetRange' :
 				'getSortedSetRevRange';
-			tids = await db[method](sortToSet(params.sort), 0, meta.config.recentMaxTopics - 1);
+			tids = await db[method](sortToSet(params.sort), 0, params.allVisible ? -1 : meta.config.recentMaxTopics - 1);
 		}
 
 		return tids;
@@ -203,7 +204,7 @@ module.exports = function (Topics) {
 		const method = params.sort === 'old' ?
 			'getSortedSetRange' :
 			'getSortedSetRevRange';
-		const tids = await db[method](sets, 0, meta.config.recentMaxTopics - 1);
+		const tids = await db[method](sets, 0, params.allVisible ? -1 : meta.config.recentMaxTopics - 1);
 		return pinnedTids.concat(tids);
 	}
 
@@ -289,16 +290,17 @@ module.exports = function (Topics) {
 			tids = await Topics.filterNewTids(tids, uid);
 		} else if (filter === 'unreplied') {
 			tids = await Topics.filterUnrepliedTids(tids);
-		} else {
+		} else if (!params.allVisible) {
 			tids = await Topics.filterNotIgnoredTids(tids, uid);
 		}
 
 		tids = await privileges.topics.filterTids('topics:read', tids, uid);
-		let topicData = await Topics.getTopicsFields(tids, ['uid', 'tid', 'cid', 'tags']);
+		let topicData = await Topics.getTopicsFields(tids, ['uid', 'tid', 'cid', 'tags', 'deleted', 'scheduled']);
+		if (params.allVisible) { topicData = topicData.filter(topic => topic && !topic.deleted && !topic.scheduled); }
 		const topicCids = _.uniq(topicData.map(topic => topic.cid)).filter(Boolean);
 
 		async function getIgnoredCids() {
-			if (params.cids || filter === 'watched' || meta.config.disableRecentCategoryFilter) {
+			if (params.allVisible || params.cids || filter === 'watched' || meta.config.disableRecentCategoryFilter) {
 				return [];
 			}
 			return await categories.isIgnored(topicCids, uid);
@@ -310,6 +312,12 @@ module.exports = function (Topics) {
 
 		const isCidIgnored = _.zipObject(topicCids, ignoredCids);
 		topicData = filtered;
+		if (params.allVisible) {
+			let visible = await privileges.categories.filterCids('find', topicCids, uid);
+			visible = await privileges.categories.filterCids('read', visible, uid);
+			const visibleCids = new Set(visible.map(String));
+			topicData = topicData.filter(topic => visibleCids.has(String(topic.cid)));
+		}
 
 		const { tags } = params;
 		tids = topicData.filter(t => (

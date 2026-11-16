@@ -91,7 +91,8 @@ define('handleBack', [
 			highlight.addClass('highlight');
 			setTimeout(function () {
 				highlight.removeClass('highlight');
-			}, 5000);
+			// 返回列表时短暂标记刚浏览的主题，避免长时间遮住卡片背景。
+			}, 1000);
 		}
 	};
 
