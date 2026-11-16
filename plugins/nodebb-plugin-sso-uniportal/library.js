@@ -2,6 +2,7 @@
 
 const { createHash, randomBytes } = require('node:crypto');
 const { expiration, lifetime, createAccessControl } = require('./session-policy');
+const { returnPath } = require('./return-path');
 const hash = value => createHash('sha256').update(value).digest('hex');
 const failure = (stage = 'authentication') => Object.assign(new Error('Enterprise login failed. Please start again or contact the administrator.'), { uniportalStage: stage });
 const failureMessages = {
@@ -78,7 +79,8 @@ function createService({ db, user, post = postJSON, now = Date.now }) {
 			await new Promise((resolve, reject) => req.session.save(err => (err ? reject(err) : resolve())));
 			const state = randomBytes(32).toString('hex');
 			const key = `uniportal:state:${hash(state)}`;
-			await db.setObject(key, { browser: hash(req.sessionID), expires: now() + 300000, consumed: 0 });
+			const destination = returnPath(req.query?.returnTo || req.session.next || req.session.returnTo, new URL(c.REDIRECT_URI).origin);
+			await db.setObject(key, { browser: hash(req.sessionID), expires: now() + 300000, consumed: 0, returnTo: destination });
 			await db.expire(key, 600);
 			const url = new URL(c.AUTHORIZE_URL);
 			url.search = new URLSearchParams({ client_id: c.authClient, response_type: 'code', redirect_uri: c.REDIRECT_URI, scope: c.scope, display: 'page', state }).toString();
@@ -103,6 +105,7 @@ function createService({ db, user, post = postJSON, now = Date.now }) {
 			const account = await atStage('identity', () => identity(profile));
 			if (now() >= expiresAt) { throw failure('expired'); }
 			req.session.uniportalAuth = { uid: account.uid, authenticatedAt: issuedAt, expiresAt };
+			req.session.uniportalReturnTo = returnPath(record.returnTo, new URL(c.REDIRECT_URI).origin);
 			return account;
 		},
 	};
@@ -150,7 +153,16 @@ exports.auth = async function (strategies) {
 		});
 	};
 	passport.use(strategy);
-	strategies.push({ name: 'uniportal', url: '/auth/uniportal', callbackURL: '/auth/uniportal/callback', failureUrl: '/login?local=1&uniportal=failed', checkState: false, icon: 'fa-building', labels: { login: '企业 Uniportal 登录', register: '企业 Uniportal 登录' } });
+	strategies.push({ name: 'uniportal', url: '/auth/uniportal', callbackURL: '/auth/uniportal/callback', failureUrl: '/login?local=1&uniportal=failed',
+		successUrl(req) {
+			const destination = returnPath(req.session.uniportalReturnTo, new URL(c.REDIRECT_URI).origin);
+			delete req.session.uniportalReturnTo;
+			delete req.session.returnTo;
+			delete req.session.next;
+			delete req.session.registration;
+			return destination;
+		},
+		checkState: false, icon: 'fa-building', labels: { login: '企业 Uniportal 登录', register: '企业 Uniportal 登录' } });
 	return strategies;
 };
 

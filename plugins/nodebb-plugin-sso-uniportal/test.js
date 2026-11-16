@@ -35,6 +35,17 @@ function fixture() {
 	return { service, c, users, objects, user, db, created: () => created, advance: () => { time += 300001; } };
 }
 
+test('OAuth state carries the last page through callback instead of a stale login target', async () => {
+	const f = fixture();
+	const request = browserRequest('return-browser');
+	request.query = { returnTo: '/topic/1/example?page=2#4' };
+	request.session.returnTo = '/login?local=1';
+	const url = await f.service.begin(request, f.c);
+	const callback = { sessionID: 'return-browser', session: {}, query: { state: new URL(url).searchParams.get('state'), code: 'code' } };
+	await f.service.complete(callback, f.c);
+	assert.equal(callback.session.uniportalReturnTo, '/topic/1/example?page=2#4');
+});
+
 test('first login, concurrent callbacks, repeat login and name synchronization', async () => {
 	const f = fixture();
 	const results = await Promise.all(Array.from({ length: 10 }, () => f.service.identity({ uid: 'employee-1', displayName: 'cn=张三,ou=team' })));
@@ -148,6 +159,10 @@ test('enabled hook registers Passport routes and redirects failed callbacks safe
 		assert.equal(strategies[0].callbackURL, '/auth/uniportal/callback');
 		assert.equal(strategies[0].checkState, false); // plugin supplies the stronger, one-use state check
 		assert.equal(strategies[0].failureUrl, '/login?local=1&uniportal=failed');
+		const returnRequest = { session: { uniportalReturnTo: '/topic/1/test', returnTo: '/login', next: '/login', registration: {} } };
+		assert.equal(strategies[0].successUrl(returnRequest), '/topic/1/test');
+		assert.deepEqual(returnRequest.session, {});
+		assert.equal(strategies[0].successUrl({ session: { uniportalReturnTo: '/login?local=1' } }), '/');
 		process.env.UNIPORTAL_AUTO_LOGIN = 'true';
 		const redirectGuest = require('./library').redirectGuest;
 		for (const originalUrl of ['/', '/login', '/api/', '/api/login']) {

@@ -1,5 +1,7 @@
 'use strict';
 
+const { returnPath } = require('./return-path');
+
 function lifetime(env = process.env) {
 	const seconds = Number(env.UNIPORTAL_SESSION_TTL_SECONDS || 1800);
 	if (!Number.isInteger(seconds) || seconds < 1 || seconds > 86400) { throw new Error('Invalid enterprise session lifetime'); }
@@ -61,8 +63,11 @@ function createAccessControl({ db, user, helpers, sockets, env = process.env, no
 				req.uid = 0;
 				req.loggedIn = false;
 			}
-			// Reaching /login after a revoked session must not fall through to the
-			// local form. Keep only explicit local login and failed-OAuth recovery.
+			if (req.method === 'GET' && !publicRoute(p, req.method) && !p.startsWith('/api/') && p !== '/api' && req.session) {
+				const origin = new URL(env.UNIPORTAL_REDIRECT_URI || 'http://localhost').origin;
+				req.session.returnTo = returnPath(req.originalUrl || req.url, origin);
+			}
+			// Keep only explicit local login and failed-OAuth recovery on /login.
 			if (['/login', '/login/'].includes(p) && ['GET', 'HEAD'].includes(req.method) &&
 				env.UNIPORTAL_AUTO_LOGIN === 'true' && req.query?.local !== '1' && req.query?.uniportal !== 'failed') {
 				res.set('Cache-Control', 'no-store');

@@ -44,7 +44,8 @@
 		try {
 			await Promise.race([preserveDrafts(), new Promise(resolve => root.setTimeout(resolve, 2000))]);
 		} catch { /* Reauthentication must still work if the draft loader is unavailable. */ }
-		root.location.replace(loginUrl);
+		const returnTo = (root.location.pathname || '/') + (root.location.search || '') + (root.location.hash || '');
+		root.location.replace(`${loginUrl}?returnTo=${encodeURIComponent(returnTo)}`);
 	}
 	function checkDeadline() {
 		if (root.performance.now() >= deadline) { redirect(); }

@@ -152,12 +152,16 @@ Auth.reloadRoutes = async function (params) {
 			async.waterfall([
 				async.apply(req.login.bind(req), res.locals.user, { keepSessionInfo: true }),
 				async.apply(controllers.authentication.onSuccessfulLogin, req, res.locals.user.uid, true, wasForceLogin),
-			], (err) => {
+			], async (err) => {
 				if (err) {
 					return next(err);
 				}
 
-				helpers.redirect(res, strategy.successUrl || '/');
+				try {
+					const destination = typeof strategy.successUrl === 'function' ? await strategy.successUrl(req, res) : strategy.successUrl || '/';
+					await new Promise((resolve, reject) => req.session.save(error => (error ? reject(error) : resolve())));
+					helpers.redirect(res, destination);
+				} catch (error) { next(error); }
 			});
 		});
 	});

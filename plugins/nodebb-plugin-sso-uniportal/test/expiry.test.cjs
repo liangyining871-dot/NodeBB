@@ -47,7 +47,7 @@ test('client handles invalid sessions and server disconnects, including a stalle
 			document: { querySelector: () => ({}), addEventListener() {} },
 			require() {}, // Simulate a composer module that never finishes loading.
 			performance: { now: () => 0 }, addEventListener() {},
-			location: { replace: target => redirects.push(target) },
+			location: { pathname: '/forum/topic/1/example', search: '?page=2', hash: '#4', replace: target => redirects.push(target) },
 			setTimeout: (callback, delay) => { timers.push({ callback, delay }); },
 			fetch: async () => ({ status: 200 }), $: () => ({ on() {} }),
 		};
@@ -56,7 +56,7 @@ test('client handles invalid sessions and server disconnects, including a stalle
 		assert.equal(redirects.length, 0);
 		timers.find(timer => timer.delay === 2000).callback();
 		await new Promise(setImmediate);
-		assert.deepEqual(redirects, ['/forum/auth/uniportal']);
+		assert.deepEqual(redirects, ['/forum/auth/uniportal?returnTo=%2Fforum%2Ftopic%2F1%2Fexample%3Fpage%3D2%234']);
 		handlers.get('event:uniportal.expired')();
 		await new Promise(setImmediate);
 		assert.equal(redirects.length, 1);
