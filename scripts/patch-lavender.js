@@ -21,6 +21,20 @@ function translate(source) {
 	});
 }
 
+// 首页摘要保留文字，另显示首个媒体附件；该补丁随安装和镜像构建重复应用。
+function addMediaPreview(source) {
+	if (source.includes('category-media-preview')) { return source; }
+	const marker = '<hr class="mb-2 mt-1" />';
+	if (!source.includes(marker)) { throw new Error('Lavender category preview template changed'); }
+	return source.replace(marker, `${marker}
+				{{{ if ./mediaPreview }}}
+				<a class="category-media-preview" href="{config.relative_path}/topic/{./topic.slug}{{{ if ./index }}}/{./index}{{{ end }}}" data-video-src="{./mediaPreview.videoUrl}" aria-label="查看媒体所在帖子">
+					<img src="{./mediaPreview.url}" alt="{./mediaPreview.name}" loading="lazy" />
+					{{{ if ./mediaPreview.isVideo }}}<span class="category-media-play" aria-hidden="true">▶</span>{{{ end }}}
+				</a>
+				{{{ end }}}`);
+}
+
 async function patch() {
 	const theme = path.join(root, 'node_modules/nodebb-theme-lavender');
 	let version;
@@ -35,7 +49,8 @@ async function patch() {
 			const filename = path.join(directory, entry.name);
 			if (entry.isDirectory()) { await walk(filename); } else if (entry.name.endsWith('.tpl')) {
 				const original = await fs.readFile(filename, 'utf8');
-				const updated = translate(original);
+				let updated = translate(original);
+				if (entry.name === 'category_child.tpl') { updated = addMediaPreview(updated); }
 				if (updated !== original) { await fs.writeFile(filename, updated); count += 1; }
 			}
 		}
@@ -44,5 +59,5 @@ async function patch() {
 	console.log(`Lavender 8.1.2 translation compatibility: ${count} template files updated.`);
 }
 
-module.exports = { translate, patch };
+module.exports = { translate, addMediaPreview, patch };
 if (require.main === module) { patch().catch((err) => { console.error(err.message); process.exitCode = 1; }); }

@@ -20,11 +20,11 @@ async function convertVideo(input, output) {
 	], { timeout: 10 * 60 * 1000, maxBuffer: 1024 * 1024, windowsHide: true });
 }
 
-// 从第一帧提取封面，避免短视频因固定时间点超出时长而生成失败。
+// 从片头的一组帧中选代表画面，避免直接把第一帧黑屏作为封面。
 async function extractPoster(input, output) {
 	await run(process.env.FFMPEG_PATH || 'ffmpeg', [
 		'-nostdin', '-y', '-v', 'error', '-protocol_whitelist', 'file,pipe', '-i', input,
-		'-map', '0:v:0', '-frames:v', '1', '-vf', 'scale=640:-2', '-q:v', '3', '-threads', '2', output,
+		'-map', '0:v:0', '-frames:v', '1', '-vf', 'thumbnail=60,scale=640:-2', '-q:v', '3', '-threads', '2', output,
 	], { timeout: 60 * 1000, maxBuffer: 1024 * 1024, windowsHide: true });
 }
 
@@ -41,12 +41,14 @@ function createVideoPreview({ db, getStorage, convert = convertVideo, poster = e
 			const current = await db.getObject(key);
 			if (!current || !['pending', 'attached'].includes(current.status)) { throw new Error('附件不可用'); }
 			const variants = JSON.parse(current.variants);
-			if (variants[variant]) { return variants[variant]; }
+			const isPoster = variant === 'poster';
+			// 旧封面可能是第一帧黑屏，更新算法后按需重新生成。
+			if (variants[variant] && (!isPoster || variants[variant].version === 2)) { return variants[variant]; }
 			const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'nodebb-video-'));
 			const { client, bucket } = getStorage();
-			const isPoster = variant === 'poster';
-			const filename = isPoster ? 'poster.jpg' : 'preview.mp4';
+			const filename = isPoster ? 'poster-v2.jpg' : 'preview.mp4';
 			const file = { objectKey: `${record.id}/${filename}`, mime: isPoster ? 'image/jpeg' : 'video/mp4' };
+			if (isPoster) { file.version = 2; }
 			try {
 				const input = path.join(dir, 'original');
 				const output = path.join(dir, filename);
@@ -61,6 +63,10 @@ function createVideoPreview({ db, getStorage, convert = convertVideo, poster = e
 					throw new Error('附件不可用');
 				}
 				await db.setObjectField(key, 'variants', JSON.stringify({ ...JSON.parse(latest.variants), [variant]: file }));
+				// 记录切换成功后清理旧算法的封面，清理失败不影响当前预览。
+				if (isPoster && variants.poster && variants.poster.objectKey !== file.objectKey) {
+					await client.removeObject(bucket, variants.poster.objectKey).catch(() => {});
+				}
 				return file;
 			} finally {
 				await fs.rm(dir, { recursive: true, force: true });

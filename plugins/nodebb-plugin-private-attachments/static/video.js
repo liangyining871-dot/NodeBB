@@ -3,6 +3,19 @@
 $(function () {
 	let activeVideo;
 	function decorate() {
+		$('.category-media-preview').each(function () {
+			if (this.dataset.mediaReady) { return; }
+			this.dataset.mediaReady = '1';
+			const container = $(this);
+			const image = container.find('img');
+			if (this.dataset.videoSrc) {
+				bindPosterFallback(image, container, new URL(this.dataset.videoSrc, location.href));
+			} else {
+				image.one('error', () => container.hide());
+			}
+			// 服务端输出的图片可能在脚本初始化前已加载失败。
+			if (image[0]?.complete && !image[0].naturalWidth) { image.trigger('error'); }
+		});
 		// 仅处理本站私有附件，兼容旧帖、分页和实时加载的回复。
 		$('[component="post/content"] a[href]').each(function () {
 			if (this.dataset.videoPreview) { return; }
@@ -18,25 +31,7 @@ $(function () {
 			const cover = $('<button type="button" class="private-video-cover" aria-label="预览并播放视频"></button>');
 			const image = $('<img loading="lazy" alt="视频封面">');
 			cover.append(image, $('<span class="private-video-cover-play" aria-hidden="true">▶</span>'));
-			// 本地未安装 FFmpeg 时，MP4 等格式仍可由浏览器显示第一帧。
-			image.one('error', () => {
-				image.remove();
-				if (/\.wmv$/i.test(url.pathname)) {
-					cover.append($('<span class="private-video-cover-hint">封面暂不可用，点击播放</span>'));
-					return;
-				}
-				const frame = document.createElement('video');
-				frame.muted = true;
-				frame.preload = 'metadata';
-				frame.setAttribute('playsinline', '');
-				frame.setAttribute('aria-hidden', 'true');
-				frame.addEventListener('error', () => {
-					frame.remove();
-					cover.append($('<span class="private-video-cover-hint">封面暂不可用，点击播放</span>'));
-				});
-				frame.src = `${url.href}#t=0.1`;
-				cover.prepend(frame);
-			});
+			bindPosterFallback(image, cover, url);
 			image.attr('src', posterUrl.href);
 			const download = new URL(url);
 			download.searchParams.set('download', '1');
@@ -46,6 +41,44 @@ $(function () {
 			$(this).replaceWith(card);
 			play.on('click', () => playInline(card, cover, url, name, posterUrl.href));
 			cover.on('click', () => playInline(card, cover, url, name, posterUrl.href));
+		});
+	}
+
+	// 首页与帖子共用取帧回退：加载实际画面后定位到片头之后，避免只显示元数据占位。
+	function bindPosterFallback(image, container, url) {
+		image.one('error', () => {
+			image.remove();
+			const unavailable = () => container.append($('<span class="private-video-cover-hint">封面暂不可用</span>'));
+			if (/\.wmv$/i.test(url.pathname)) { unavailable(); return; }
+			const frame = document.createElement('video');
+			frame.muted = true;
+			frame.preload = 'auto';
+			frame.setAttribute('playsinline', '');
+			frame.setAttribute('aria-hidden', 'true');
+			frame.addEventListener('loadedmetadata', () => {
+				// 按时长取前 10%（最多一秒），短视频也不会跳到结尾之外。
+				if (Number.isFinite(frame.duration) && frame.duration > 0) {
+					frame.currentTime = Math.min(1, frame.duration / 10);
+				}
+			}, { once: true });
+			frame.addEventListener('seeked', () => {
+				if (!frame.videoWidth || !frame.videoHeight) { return; }
+				try {
+					// 截成静态图后立即释放视频连接，避免首页持续预加载整个视频。
+					const canvas = document.createElement('canvas');
+					canvas.width = Math.min(640, frame.videoWidth);
+					canvas.height = Math.round(canvas.width * frame.videoHeight / frame.videoWidth);
+					canvas.getContext('2d').drawImage(frame, 0, 0, canvas.width, canvas.height);
+					image.attr('src', canvas.toDataURL('image/jpeg', 0.85));
+					$(frame).replaceWith(image);
+					frame.removeAttribute('src');
+					frame.load();
+				} catch (_err) { /* 浏览器禁止截图时保留暂停的视频画面。 */ }
+			}, { once: true });
+			frame.addEventListener('error', () => { frame.remove(); unavailable(); });
+			frame.src = url.href;
+			container.prepend(frame);
+			frame.load();
 		});
 	}
 
@@ -85,7 +118,7 @@ $(function () {
 	$(window).on('action:ajaxify.end action:posts.loaded action:posts.edited', decorate);
 	$(window).on('action:ajaxify.start', () => {
 		// 切换页面时停止播放和下载。
-		$('.private-video-card video').each(function () {
+		$('.private-video-card video, .category-media-preview video').each(function () {
 			this.pause();
 			this.removeAttribute('src');
 			this.load();

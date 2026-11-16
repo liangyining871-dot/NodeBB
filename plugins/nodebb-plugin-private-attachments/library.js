@@ -7,12 +7,14 @@ const { createLifecycle } = require('./lifecycle');
 const { createResources } = require('./resources');
 const { registerResourceRoutes } = require('./resource-routes');
 const { createVideoPreview } = require('./video');
+const { createSummaryMedia } = require('./summary-media');
 
 let storage;
 let attachments;
 let lifecycle;
 let resources;
 let connection;
+let previewSummaries;
 
 async function ensureStorage() {
 	if (storage) { return storage; }
@@ -57,6 +59,8 @@ exports.init = async function ({ router, middleware }) {
 		baseUrl: requireNodeBB('nconf').get('url'),
 	});
 	attachments = createAttachments({ ...services, canRead: lifecycle.canRead });
+	previewSummaries = createSummaryMedia({ ...services, posts: requireNodeBB('./src/posts'),
+		canRead: lifecycle.canRead, baseUrl: requireNodeBB('nconf').get('url') });
 	// 先注册入口，即使存储检查失败也不回退到公开本地文件。
 	const read = createReadHandler({ attachments, getStorage, setSafeFileHeaders: middleware.uploads.setSafeFileHeaders,
 		videoPreview: createVideoPreview({ db: services.db, getStorage }) });
@@ -75,6 +79,7 @@ exports.init = async function ({ router, middleware }) {
 };
 
 exports.resourceStorage = async data => await getResources().storage(data);
+exports.previewSummaries = async data => (previewSummaries ? await previewSummaries(data) : data);
 exports.deleteUserResources = async data => { await getResources().deleteOwner('user', data.uid); return data; };
 exports.deleteCategoryResources = async data => { await getResources().deleteOwner('category', data.cid); return data; };
 exports.renameGroupResources = async data => { await getResources().renameOwner('group', data.old, data.new); return data; };

@@ -34,7 +34,8 @@ test('封面单独生成并缓存，和播放变体共存且不覆盖原件', as
 	assert.equal(calls, 1);
 	const variants = JSON.parse(f.record.variants);
 	assert.equal(variants.original.objectKey, 'video/original.wmv');
-	assert.equal(variants.poster.objectKey, 'video/poster.jpg');
+	assert.equal(variants.poster.objectKey, 'video/poster-v2.jpg');
+	assert.equal(variants.poster.version, 2);
 	assert.equal(variants.preview.objectKey, 'video/preview.mp4');
 });
 
@@ -50,6 +51,18 @@ test('WMV 合并并发转换、复用 MP4，保留原件', async () => {
 	assert.equal((await f.preview(f.record)).mime, 'video/mp4');
 	assert.equal(calls, 1);
 	assert.equal(JSON.parse(f.record.variants).original.objectKey, 'video/original.wmv');
+});
+
+test('旧黑屏封面按新算法重建，后续直接复用', async () => {
+	let calls = 0;
+	const f = fixture(undefined, async (input, output) => { calls += 1; await fs.writeFile(output, 'new-poster'); });
+	const variants = JSON.parse(f.record.variants);
+	f.record.variants = JSON.stringify({ ...variants, poster: { objectKey: 'video/poster.jpg', mime: 'image/jpeg' } });
+	f.objects.set('video/poster.jpg', Buffer.from('old-poster'));
+	assert.equal((await f.preview(f.record, 'poster')).version, 2);
+	assert.equal(f.objects.has('video/poster.jpg'), false);
+	await f.preview(f.record, 'poster');
+	assert.equal(calls, 1);
 });
 
 test('转换失败可重试，临时文件已清理', async () => {

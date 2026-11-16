@@ -4,6 +4,7 @@
   "scripts": ["static/video.js"],
   "scss": ["static/video.scss"],
   "hooks": [
+    { "hook": "filter:teasers.get", "method": "previewSummaries" },
     { "hook": "static:app.load", "method": "init", "priority": 1 },
     { "hook": "filter:files.storage", "method": "resourceStorage" },
     { "hook": "static:user.delete", "method": "deleteUserResources" },
