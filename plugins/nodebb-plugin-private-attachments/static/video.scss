@@ -47,7 +47,9 @@
 	// 仅在出现管理勾选框时为标题预留空间，长标题换行也不会与其重叠。
 	> .topic-card:has(> .topic-card-select) .topic-card-title { padding-inline-start: 1.75rem; }
 	.topic-card-content { display: flex; flex-direction: column; gap: .5rem; flex: 1; min-height: 0; padding: 1rem; }
-	.topic-card-body { flex: 1; min-height: 0; overflow: hidden; }
+	.topic-card-body { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+	.topic-card-body-link { position: absolute; inset: 0; z-index: 1; }
+	.topic-card-external-badge { flex-shrink: 0; padding: .1rem .35rem; border-radius: .25rem; background: var(--bs-tertiary-bg, #f4f1f8); color: var(--bs-primary, #8c71b2); }
 	.topic-card-body-media { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: .75rem; align-items: start; }
 	.topic-card-cover { width: 100%; aspect-ratio: 16 / 9; margin: 0; border-radius: .35rem; }
 	.topic-card-title, .topic-card-excerpt { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
@@ -62,6 +64,9 @@
 	.topic-card-author .timeago { flex-shrink: 0; font-size: .7rem; }
 	.topic-card-stats { display: flex; justify-content: space-between; gap: .35rem; padding-top: .4rem; border-top: 1px solid var(--bs-border-color, #eee); font-size: .72rem; color: var(--bs-secondary-color, #777); white-space: nowrap; }
 }
+.external-topic-fields { flex-shrink: 0; padding: .4rem .5rem; border: 1px solid var(--bs-border-color, #ddd); border-radius: .25rem; font-size: .85rem; }
+.external-topic-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem; margin-top: .4rem; small { grid-column: 1 / -1; } }
+@media (max-width: 575px) { .external-topic-options { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 1199px) { #topics-container.topic-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 575px) { #topics-container.topic-card-grid { grid-template-columns: minmax(0, 1fr); } }
 .category-media-preview {

@@ -6,18 +6,20 @@
 		<meta itemprop="name" content="{./title}">
 		{{{ if showSelect }}}<i class="fa fa-square-o topic-card-select" component="topic/select" aria-label="选择主题"></i>{{{ end }}}
 		<div class="topic-card-content">
-			<a component="topic/header" class="topic-card-title topic-title" href="{config.relative_path}/topic/{./slug}" title="{./title}" itemprop="url">{{{ if ./txTitle }}}{{tx(./title)}}{{{ else }}}{./title}{{{ end }}}</a>
+			<a component="topic/header" class="topic-card-title topic-title" href="{{{ if ./externalLink }}}{./externalLink.url}{{{ else }}}{config.relative_path}/topic/{./slug}{{{ end }}}" {{{ if ./externalLink }}}target="_blank" rel="noopener noreferrer"{{{ end }}} title="{./title}" itemprop="url">{{{ if ./txTitle }}}{{tx(./title)}}{{{ else }}}{./title}{{{ end }}}</a>
 			<div class="topic-card-category">
 				<a href="{config.relative_path}/recent?cid={./cid}">{./category.name}</a>
+				{{{ if ./externalLink }}}<span class="topic-card-external-badge"><i class="fa fa-external-link" aria-hidden="true"></i> 外部链接</span>{{{ end }}}
 				<i component="topic/pinned" class="fa fa-thumb-tack {{{ if !./pinned }}}hidden{{{ end }}}" title="置顶"></i>
 				<i component="topic/locked" class="fa fa-lock {{{ if !./locked }}}hidden{{{ end }}}" title="已锁定"></i>
 				<i component="topic/scheduled" class="fa fa-clock-o {{{ if !./scheduled }}}hidden{{{ end }}}" title="定时发布"></i>
 				{{{ if ./deleted }}}<span>已删除</span>{{{ end }}}
 			</div>
 			<div class="topic-card-body {{{ if ./mediaPreview }}}topic-card-body-media{{{ end }}}">
-				<p class="topic-card-excerpt">{{{ if ./teaser.content }}}{./teaser.content}{{{ else }}}&nbsp;{{{ end }}}</p>
+				<p class="topic-card-excerpt">{{{ if ./externalLink }}}{./externalLink.description}{{{ else }}}{{{ if ./teaser.content }}}{./teaser.content}{{{ else }}}&nbsp;{{{ end }}}{{{ end }}}</p>
+				{{{ if ./externalLink }}}<a class="topic-card-body-link" href="{./externalLink.url}" target="_blank" rel="noopener noreferrer" aria-label="打开外部链接：{./title}"></a>{{{ end }}}
 				{{{ if ./mediaPreview }}}
-				<a class="topic-card-cover category-media-preview" href="{config.relative_path}/topic/{./slug}" data-video-src="{./mediaPreview.videoUrl}" aria-label="查看主题媒体">
+				<a class="topic-card-cover category-media-preview" href="{{{ if ./externalLink }}}{./externalLink.url}{{{ else }}}{config.relative_path}/topic/{./slug}{{{ end }}}" {{{ if ./externalLink }}}target="_blank" rel="noopener noreferrer"{{{ end }}} data-video-src="{./mediaPreview.videoUrl}" aria-label="查看主题媒体">
 					<img src="{./mediaPreview.url}" alt="{./mediaPreview.name}" loading="lazy" />
 					{{{ if ./mediaPreview.isVideo }}}<span class="category-media-play" aria-hidden="true">▶</span>{{{ end }}}
 				</a>
@@ -28,7 +30,7 @@
 				<span class="timeago small" title="{{{ if ./teaser.timestampISO }}}{./teaser.timestampISO}{{{ else }}}{./timestampISO}{{{ end }}}"></span>
 			</div>
 			<div class="topic-card-stats">
-				<span title="{{tx("global:posts")}}"><i class="fa fa-comment-o" aria-hidden="true"></i> {humanReadableNumber(./postcount)} {{tx("global:posts")}}</span>
+				<span title="{{tx("global:posts")}}">{{{ if ./externalLink }}}<a href="{config.relative_path}/topic/{./slug}" title="查看论坛主题，可在主题中编辑或讨论"><i class="fa fa-comment-o" aria-hidden="true"></i> 讨论 / 详情</a>{{{ else }}}<i class="fa fa-comment-o" aria-hidden="true"></i> {humanReadableNumber(./postcount)} {{tx("global:posts")}}{{{ end }}}</span>
 				<span title="{{tx("global:views")}}"><i class="fa fa-eye" aria-hidden="true"></i> {humanReadableNumber(./viewcount)} {{tx("global:views")}}</span>
 				<span title="{{tx("global:votes")}}"><i class="fa fa-thumbs-o-up" aria-hidden="true"></i> {humanReadableNumber(./votes)}</span>
 			</div>

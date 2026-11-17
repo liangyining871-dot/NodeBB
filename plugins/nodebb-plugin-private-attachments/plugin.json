@@ -1,9 +1,15 @@
 {
   "id": "nodebb-plugin-private-attachments",
   "name": "论坛私有附件",
-  "scripts": ["static/video.js"],
+  "scripts": ["static/video.js", "static/external-topics.js"],
   "scss": ["static/video.scss"],
   "hooks": [
+    { "hook": "filter:topic.post", "method": "validateExternalTopic" },
+    { "hook": "filter:topic.create", "method": "saveExternalTopic" },
+    { "hook": "filter:topic.edit", "method": "saveExternalTopic" },
+    { "hook": "filter:post.edit", "method": "validateExternalEdit", "priority": 1 },
+    { "hook": "filter:composer.push", "method": "externalComposer" },
+    { "hook": "filter:topics.get", "method": "externalTopicCards", "priority": 20 },
     { "hook": "filter:teasers.get", "method": "previewSummaries" },
     { "hook": "filter:topics.get", "method": "previewTopics" },
     { "hook": "static:app.load", "method": "init", "priority": 1 },

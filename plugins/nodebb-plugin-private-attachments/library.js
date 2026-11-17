@@ -8,6 +8,20 @@ const { createResources } = require('./resources');
 const { registerResourceRoutes } = require('./resource-routes');
 const { createVideoPreview } = require('./video');
 const { createSummaryMedia } = require('./summary-media');
+const externalTopics = require('./external-topics');
+
+exports.validateExternalTopic = async data => externalTopics.validate(data);
+exports.validateExternalEdit = async (payload) => { externalTopics.validate(payload.data); return payload; };
+exports.saveExternalTopic = async payload => externalTopics.save(payload);
+exports.externalTopicCards = async data => externalTopics.decorate(data);
+exports.externalComposer = async (data) => {
+	if (!data.isMain) { return data; }
+	const posts = global.nodebb.require('./src/posts');
+	const topics = global.nodebb.require('./src/topics');
+	const tid = await posts.getPostField(data.pid, 'tid');
+	Object.assign(data, await topics.getTopicFields(tid, ['externalUrl', 'externalCover']));
+	return data;
+};
 
 let storage;
 let attachments;
