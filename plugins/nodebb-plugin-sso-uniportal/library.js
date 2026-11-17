@@ -73,13 +73,20 @@ function createService({ db, user, post = postJSON, now = Date.now }) {
 	return {
 		identity,
 		async begin(req, c) {
+			const destination = returnPath(req.query?.returnTo || req.session.next || req.session.returnTo, new URL(c.REDIRECT_URI).origin);
+			const auth = req.session.uniportalAuth;
+			if (auth && (!Number.isFinite(auth.expiresAt) || now() >= auth.expiresAt)) {
+				// Passport 注销会生成新会话，避免旧会话的到期清理删除本次 OAuth 状态。
+				await new Promise((resolve, reject) => req.logout(err => (err ? reject(err) : resolve())));
+				req.uid = 0;
+				req.loggedIn = false;
+			}
 			// NodeBB uses saveUninitialized:false. A DB-only state does not cause a
 			// session cookie to be issued, so persist a session mutation before leaving.
 			req.session.uniportalStarted = randomBytes(16).toString('hex');
 			await new Promise((resolve, reject) => req.session.save(err => (err ? reject(err) : resolve())));
 			const state = randomBytes(32).toString('hex');
 			const key = `uniportal:state:${hash(state)}`;
-			const destination = returnPath(req.query?.returnTo || req.session.next || req.session.returnTo, new URL(c.REDIRECT_URI).origin);
 			await db.setObject(key, { browser: hash(req.sessionID), expires: now() + 300000, consumed: 0, returnTo: destination });
 			await db.expire(key, 600);
 			const url = new URL(c.AUTHORIZE_URL);

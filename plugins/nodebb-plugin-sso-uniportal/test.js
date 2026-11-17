@@ -46,6 +46,44 @@ test('OAuth state carries the last page through callback instead of a stale logi
 	assert.equal(callback.session.uniportalReturnTo, '/topic/1/example?page=2#4');
 });
 
+test('expired-session reauthentication uses a new browser session before binding OAuth state', async () => {
+	const f = fixture();
+	const request = browserRequest('expired-browser');
+	request.uid = 1;
+	request.user = { uid: 1 };
+	request.session.uniportalAuth = { uid: 1, expiresAt: 1000 };
+	request.session.returnTo = '/topic/7/example';
+	let logouts = 0;
+	request.logout = (done) => {
+		logouts += 1;
+		request.sessionID = 'new-browser';
+		request.session = browserRequest('new-browser').session;
+		request.user = undefined;
+		done();
+	};
+	const url = await f.service.begin(request, f.c);
+	assert.equal(logouts, 1);
+	assert.equal(request.uid, 0);
+	const callback = { sessionID: 'new-browser', session: {}, query: { state: new URL(url).searchParams.get('state'), code: 'code' } };
+	await f.service.complete(callback, f.c);
+	assert.equal(callback.session.uniportalReturnTo, '/topic/7/example');
+	assert.ok(callback.session.uniportalAuth.expiresAt > 1000);
+});
+
+test('valid sessions are preserved and logout errors never create a new OAuth state', async () => {
+	const f = fixture();
+	const request = browserRequest('valid-browser');
+	request.session.uniportalAuth = { uid: 1, expiresAt: 2000 };
+	request.logout = () => { throw new Error('不应注销有效会话'); };
+	await f.service.begin(request, f.c);
+	assert.equal(request.sessionID, 'valid-browser');
+	const states = f.objects.size;
+	request.session.uniportalAuth.expiresAt = 1000;
+	request.logout = done => done(new Error('session store unavailable'));
+	await assert.rejects(f.service.begin(request, f.c), /session store unavailable/);
+	assert.equal(f.objects.size, states);
+});
+
 test('first login, concurrent callbacks, repeat login and name synchronization', async () => {
 	const f = fixture();
 	const results = await Promise.all(Array.from({ length: 10 }, () => f.service.identity({ uid: 'employee-1', displayName: 'cn=张三,ou=team' })));
@@ -262,6 +300,10 @@ test('real HTTP redirect persists a fresh session cookie and binds callbacks wit
 	const f = fixture();
 	const app = express();
 	app.use(session({ secret: 'isolated-test-session-secret', resave: false, saveUninitialized: false, cookie: { sameSite: 'lax' } }));
+	const passport = new (require('passport').Passport)();
+	app.use(passport.initialize());
+	app.use(passport.session());
+	app.get('/expire', (req, res) => { req.session.uniportalAuth = { uid: 1, expiresAt: 1000 }; res.sendStatus(204); });
 	app.get('/start', async (req, res) => { res.redirect(await f.service.begin(req, f.c)); });
 	app.get('/callback', async (req, res) => {
 		try { res.json(await f.service.complete(req, f.c)); } catch (err) { res.status(400).json({ stage: err.uniportalStage }); }
@@ -288,6 +330,18 @@ test('real HTTP redirect persists a fresh session cookie and binds callbacks wit
 		const replay = await fetch(callback, { headers: { Cookie: cookie } });
 		assert.equal(replay.status, 400);
 		assert.equal((await replay.json()).stage, 'replayed');
+		await fetch(`${base}/expire`, { headers: { Cookie: cookie } });
+		const restart = await fetch(`${base}/start`, { redirect: 'manual', headers: { Cookie: cookie } });
+		assert.equal(restart.status, 302);
+		const freshCookie = restart.headers.getSetCookie()[0].split(';')[0];
+		assert.notEqual(freshCookie, cookie);
+		const freshState = new URL(restart.headers.get('location')).searchParams.get('state');
+		const newCallback = `${base}/callback?${new URLSearchParams({ state: freshState, code: 'new-code' })}`;
+		const oldBrowser = await fetch(newCallback, { headers: { Cookie: cookie } });
+		assert.equal((await oldBrowser.json()).stage, 'browser');
+		const reauthenticated = await fetch(newCallback, { headers: { Cookie: freshCookie } });
+		assert.equal(reauthenticated.status, 200);
+		assert.deepEqual(await reauthenticated.json(), { uid: 1 });
 		assert.equal(f.created(), 1);
 	} finally {
 		server.closeAllConnections();
