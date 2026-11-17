@@ -23,13 +23,16 @@ function translate(source) {
 
 // 首页摘要保留文字，另显示首个媒体附件；该补丁随安装和镜像构建重复应用。
 function addMediaPreview(source) {
+	if (!source.includes('data-document-src=')) {
+		source = source.replace('data-video-src=', 'data-document-src="{./mediaPreview.documentUrl}" data-video-src=');
+	}
 	source = source.replace('component="category/posts" class=', 'component="category/posts" data-tid="{./tid}" class=');
 	if (source.includes('category-media-preview')) { return source; }
 	const marker = '<hr class="mb-2 mt-1" />';
 	if (!source.includes(marker)) { throw new Error('Lavender category preview template changed'); }
 	return source.replace(marker, `${marker}
 				{{{ if ./mediaPreview }}}
-				<a class="category-media-preview" href="{config.relative_path}/topic/{./topic.slug}{{{ if ./index }}}/{./index}{{{ end }}}" data-video-src="{./mediaPreview.videoUrl}" aria-label="查看媒体所在帖子">
+				<a class="category-media-preview" href="{config.relative_path}/topic/{./topic.slug}{{{ if ./index }}}/{./index}{{{ end }}}" data-document-src="{./mediaPreview.documentUrl}" data-video-src="{./mediaPreview.videoUrl}" aria-label="查看媒体所在帖子">
 					<img src="{./mediaPreview.url}" alt="{./mediaPreview.name}" loading="lazy" />
 					{{{ if ./mediaPreview.isVideo }}}<span class="category-media-play" aria-hidden="true">▶</span>{{{ end }}}
 				</a>

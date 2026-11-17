@@ -11,6 +11,11 @@ $(function () {
 			const image = container.find('img');
 			if (this.dataset.videoSrc) {
 				bindPosterFallback(image, container, new URL(this.dataset.videoSrc, location.href));
+			} else if (this.dataset.documentSrc) {
+				image.one('error', () => {
+					image.hide();
+					container.append($('<span>文档 · 点击在线预览</span>'));
+				});
 			} else {
 				image.one('error', () => container.hide());
 			}

@@ -39,6 +39,18 @@ test('图片优先使用缩略图，无权限时不暴露预览', async () => {
 	assert.equal(data.teasers[0].mediaPreview, undefined);
 });
 
+test('PDF、演示文稿、Word、Excel 生成首页封面与阅读地址，无权限时不暴露', async () => {
+	for (const name of ['test.pdf', 'test.ppt', 'test.pptx', 'test.doc', 'test.docx', 'test.xls', 'test.xlsx']) {
+		const data = { teasers: [{ pid: 7 }], uid: 12 };
+		await fixture({ name, mime: 'application/pdf' }).preview(data);
+		assert.equal(data.teasers[0].mediaPreview.isDocument, true);
+		assert.match(data.teasers[0].mediaPreview.url, /\?poster=1$/);
+		assert.match(data.teasers[0].mediaPreview.documentUrl, /\?preview=1$/);
+		await fixture({ name, mime: 'application/pdf', readable: false }).preview(data);
+		assert.equal(data.teasers[0].mediaPreview, undefined);
+	}
+});
+
 test('外站附件和普通文件不生成预览', async () => {
 	for (const options of [
 		{ content: `[视频](https://other.test${source})` },

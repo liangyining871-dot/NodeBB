@@ -27,7 +27,10 @@ async function main() {
 	for (const [filename, marker] of [
 		['build/public/templates/categories.js', 'category-media-preview'],
 		['build/public/nodebb.min.js', 'private-video-player'],
+		['build/public/nodebb.min.js', 'private-document-dialog'],
+		['build/public/templates/partials/topics_list.tpl', 'data-document-src'],
 		['build/public/client.css', '.category-media-preview'],
+		['build/public/client.css', '.private-document-dialog'],
 	]) {
 		if (!(await fs.readFile(path.join(root, filename), 'utf8')).includes(marker)) {
 			throw new Error(`构建产物缺少媒体预览：${filename}`);
@@ -70,6 +73,8 @@ async function main() {
 			await video.convertVideo(input, output);
 			await video.extractPoster(input, poster);
 			if (!(await fs.stat(output)).size || !(await fs.stat(poster)).size) { throw new Error('FFmpeg 生成了空文件'); }
+			const officeFormats = await require('./check-office-preview').checkOfficePreview(path.join(directory, 'office'));
+			console.log(`Office 预览检查通过：${officeFormats.join(', ')}，含中文、多工作表及首页封面`);
 			for (const filename of ['.env', 'config.json']) {
 				try { await fs.access(path.join(root, filename)); } catch (err) {
 					if (err.code === 'ENOENT') { continue; }

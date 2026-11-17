@@ -19,7 +19,7 @@
 				<p class="topic-card-excerpt">{{{ if ./externalLink }}}{./externalLink.description}{{{ else }}}{{{ if ./teaser.content }}}{./teaser.content}{{{ else }}}&nbsp;{{{ end }}}{{{ end }}}</p>
 				{{{ if ./externalLink }}}<a class="topic-card-body-link" href="{./externalLink.url}" target="_blank" rel="noopener noreferrer" aria-label="打开外部链接：{./title}"></a>{{{ end }}}
 				{{{ if ./mediaPreview }}}
-				<a class="topic-card-cover category-media-preview" href="{{{ if ./externalLink }}}{./externalLink.url}{{{ else }}}{config.relative_path}/topic/{./slug}{{{ end }}}" {{{ if ./externalLink }}}target="_blank" rel="noopener noreferrer"{{{ end }}} data-video-src="{./mediaPreview.videoUrl}" aria-label="查看主题媒体">
+				<a class="topic-card-cover category-media-preview" href="{{{ if ./externalLink }}}{./externalLink.url}{{{ else }}}{config.relative_path}/topic/{./slug}{{{ end }}}" {{{ if ./externalLink }}}target="_blank" rel="noopener noreferrer"{{{ end }}} data-document-src="{./mediaPreview.documentUrl}" data-video-src="{./mediaPreview.videoUrl}" aria-label="查看主题媒体">
 					<img src="{./mediaPreview.url}" alt="{./mediaPreview.name}" loading="lazy" />
 					{{{ if ./mediaPreview.isVideo }}}<span class="category-media-play" aria-hidden="true">▶</span>{{{ end }}}
 				</a>

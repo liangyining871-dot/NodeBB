@@ -129,3 +129,13 @@ node --env-file=.env plugins/nodebb-plugin-private-attachments/test/integration.
 - 固定地址替换先写入新对象，再切换数据库映射，最后删除旧对象；上传失败仍保留旧资源。
   删除失败的旧对象保留状态供后续核对，不公开访问。不自动迁移或删除旧磁盘附件。
 - 原生安装使用的默认 favicon 会在首次需要时从镜像内置文件写入 MinIO，无须重新初始化论坛。
+### PDF / Office 在线预览
+
+- 支持 PDF、PPT/PPTX、Word DOC/DOCX、Excel XLS/XLSX。列表卡片显示首页缩略图，点击封面打开在线阅读弹窗；帖子详情直接展开文档阅读器，无需点击预览，支持滚动阅读，并保留新窗口阅读及下载原文件。
+- PDF 使用浏览器 PDF 阅读器；Office 文档通过服务器 LibreOffice 的 Impress、Writer、Calc 分别转为 PDF。首次转换需要等待，结果与首页封面缓存在原附件的私有存储中，兼容旧附件。Excel 按文件的打印布局分页；预览不支持编辑、公式交互、PPT 动画或嵌入音视频。
+- 每次读取（包括 HEAD、Range、缓存变体）都校验原附件权限，转换完成后再次鉴权。下载原件使用 `?download=1`。
+- 生产 Dockerfile 已包含 `libreoffice-impress`、`libreoffice-writer`、`libreoffice-calc`、`poppler-utils`、`fonts-noto-cjk`，需要重新构建镜像并部署。非 Docker 环境需安装 LibreOffice、Poppler 和中文字体；可用 `LIBREOFFICE_PATH`、`PDFTOPPM_PATH` 指定可执行文件。
+- 本地开发也需要构建资源：`node --env-file=.env nodebb build --series`，然后重启本地 NodeBB 进程并刷新浏览器。仅修改插件源文件不会更新页面使用的打包脚本、模板和样式。
+- Windows 可将便携版 Poppler 放入本地工具目录，并在 `.env` 设置 `PDFTOPPM_PATH` 为 `pdftoppm.exe` 的完整路径。实际附件检查：`node --env-file=.env scripts/test-document-preview.js <附件ID>`，会生成预览缓存并将首页图片保存到 `backups/document-preview`，保留原文件和帖子。
+- Windows 的 `LIBREOFFICE_PATH` 可指向本地 LibreOffice 的 `program/soffice.exe`。运行 `node --env-file=.env scripts/check-office-preview.js` 可生成 DOC/DOCX/XLS/XLSX 样本并验证真实转换、中文内容、多工作表、公式结果与首页封面；同样会在发布镜像构建检查中执行。
+- 转换命令参考 [LibreOffice 参数文档](https://help.libreoffice.org/latest/en-GB/text/shared/guide/start_parameters.html) 和 [Poppler pdftoppm 文档](https://manpages.debian.org/testing/poppler-utils/pdftoppm.1.en.html)。不支持内嵌 PDF 的浏览器请使用新窗口阅读或下载。

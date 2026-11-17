@@ -32,7 +32,7 @@ FROM node:${NODE_VERSION}-bookworm-slim AS final
 # WMV 在线预览需要转换为浏览器通用的 MP4。
 RUN apt-get -o Acquire::Retries=3 update \
     && for attempt in 1 2 3; do \
-         if DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg; then break; fi; \
+         if DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg libreoffice-impress libreoffice-writer libreoffice-calc poppler-utils fonts-noto-cjk; then break; fi; \
          test "$attempt" != 3 || exit 1; \
        done \
     && rm -rf /var/lib/apt/lists/*

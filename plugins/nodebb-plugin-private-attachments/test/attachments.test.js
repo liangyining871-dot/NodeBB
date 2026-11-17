@@ -12,7 +12,7 @@ const express = require('express');
 const { createAttachments } = require('../attachments');
 const { createReadHandler } = require('../routes');
 
-async function fixture(t, { thumbnail = false, videoPreview } = {}) {
+async function fixture(t, { thumbnail = false, videoPreview, documentPreview } = {}) {
 	const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'nodebb-attachment-test-'));
 	t.after(() => fs.rm(dir, { recursive: true, force: true }));
 	const file = { path: path.join(dir, 'upload'), name: '测试.pdf', type: 'text/html' };
@@ -44,7 +44,7 @@ async function fixture(t, { thumbnail = false, videoPreview } = {}) {
 	const app = express();
 	app.use((req, res, next) => { req.uid = Number(req.get('X-Test-Uid') || 0); next(); });
 	app.get('/forum/attachments/:id/:variant/:filename', createReadHandler({
-		attachments, getStorage, videoPreview,
+		attachments, getStorage, videoPreview, documentPreview,
 		setSafeFileHeaders(res) { res.set('X-Content-Type-Options', 'nosniff'); },
 	}));
 	const server = app.listen(0, '127.0.0.1');
@@ -58,6 +58,72 @@ async function fixture(t, { thumbnail = false, videoPreview } = {}) {
 	}
 	return { attachments, records, objects, client, file, db, image, config, privileges, send };
 }
+
+test('PDF 可在线读取和 Range 下载，显式下载仍返回原件', async (t) => {
+	const f = await fixture(t);
+	const uploaded = await f.attachments.upload({ file: f.file, uid: 12, detected: { mime: 'application/pdf', ext: 'pdf' } });
+	const response = await f.send('GET', uploaded.url, 12, { Range: 'bytes=0-3' });
+	assert.equal(response.status, 206);
+	assert.equal(response.body, '0123');
+	assert.match(response.headers['content-disposition'], /^inline/);
+	assert.match((await f.send('GET', `${uploaded.url}?download=1`, 12)).headers['content-disposition'], /^attachment/);
+	assert.equal((await f.send('GET', uploaded.url, 13)).status, 404);
+});
+
+test('PPT 预览和封面先鉴权，转换后重新鉴权，下载不转换', async (t) => {
+	let calls = 0;
+	const f = await fixture(t, { documentPreview: async (record, variant) => {
+		calls += 1;
+		return { objectKey: variant, mime: variant === 'document' ? 'application/pdf' : 'image/png' };
+	} });
+	f.objects.set('document', Buffer.from('converted-pdf'));
+	f.objects.set('documentPoster', Buffer.from('png'));
+	const uploaded = await f.attachments.upload({ file: { ...f.file, name: 'slides.pptx' }, uid: 12,
+		detected: { mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', ext: 'pptx' } });
+	assert.equal((await f.send('GET', `${uploaded.url}?preview=1`, 13)).status, 404);
+	assert.equal(calls, 0);
+	const response = await f.send('GET', `${uploaded.url}?preview=1`, 12, { Range: 'bytes=0-8' });
+	assert.equal(response.status, 206);
+	assert.equal(response.body, 'converted');
+	assert.equal(response.headers['content-type'], 'application/pdf');
+	assert.match(response.headers['content-disposition'], /^inline;.*slides.pdf/);
+	assert.equal((await f.send('HEAD', `${uploaded.url}?poster=1`, 12)).headers['content-type'], 'image/png');
+	assert.equal(calls, 2);
+	const original = await f.send('GET', `${uploaded.url}?download=1&preview=1`, 12);
+	assert.equal(original.body, '0123456789');
+	assert.match(original.headers['content-disposition'], /^attachment/);
+	assert.equal(calls, 2);
+	const originalRead = f.attachments.getReadable;
+	f.attachments.getReadable = async (...args) => {
+		if (calls > 2) { throw Object.assign(new Error('denied'), { status: 404 }); }
+		return originalRead(...args);
+	};
+	assert.equal((await f.send('GET', `${uploaded.url}?preview=1`, 12)).status, 404);
+});
+
+test('Word、Excel 预览返回 PDF 文件名，下载保留原格式，权限覆盖封面和阅读', async (t) => {
+	for (const ext of ['doc', 'docx', 'xls', 'xlsx']) {
+		let calls = 0;
+		const f = await fixture(t, { documentPreview: async () => {
+			calls += 1;
+			return { objectKey: 'pdf', mime: 'application/pdf' };
+		} });
+		f.objects.set('pdf', Buffer.from('%PDF-preview'));
+		const uploaded = await f.attachments.upload({ file: { ...f.file, name: `sample.${ext}` }, uid: 12 });
+		for (const query of ['preview', 'poster']) {
+			assert.equal((await f.send('GET', `${uploaded.url}?${query}=1`, 13)).status, 404);
+		}
+		assert.equal(calls, 0);
+		const preview = await f.send('GET', `${uploaded.url}?preview=1`, 12);
+		assert.equal(preview.status, 200);
+		assert.equal(preview.headers['content-type'], 'application/pdf');
+		assert.match(preview.headers['content-disposition'], /^inline;.*sample.pdf/);
+		const download = await f.send('GET', `${uploaded.url}?preview=1&download=1`, 12);
+		assert.equal(download.body, '0123456789');
+		assert.match(download.headers['content-disposition'], new RegExp(`^attachment;.*sample\\.${ext}`));
+		assert.equal(calls, 1);
+	}
+});
 
 test('上传保存元数据、随机对象路径及稳定论坛地址，不信任浏览器 MIME', async (t) => {
 	const f = await fixture(t);

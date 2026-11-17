@@ -1,6 +1,7 @@
 'use strict';
 
 const { attachmentUrl } = require('./attachments');
+const { isDocument } = require('./documents');
 
 function createSummaryMedia({ posts, db, canRead, baseUrl, relativePath = '' }) {
 	const origin = new URL(baseUrl).origin;
@@ -25,12 +26,14 @@ function createSummaryMedia({ posts, db, canRead, baseUrl, relativePath = '' }) 
 				visited.add(ref[1]);
 				const record = await db.getObject(`privateAttachment:${ref[1]}`);
 				const isVideo = record && /\.(mp4|wmv|webm|ogg)$/i.test(record.name);
-				if (!record || (!isVideo && !/^image\/(jpeg|png|gif|webp|avif)$/.test(record.mime)) ||
+				const document = record && isDocument(record);
+				if (!record || (!isVideo && !document && !/^image\/(jpeg|png|gif|webp|avif)$/.test(record.mime)) ||
 					!await canRead(record, data.uid)) { continue; }
 				const variants = JSON.parse(record.variants);
-				const variant = !isVideo && variants.thumbnail ? 'thumbnail' : 'original';
+				const variant = !isVideo && !document && variants.thumbnail ? 'thumbnail' : 'original';
 				const source = attachmentUrl(relativePath, record.id, variant, record.name);
-				teaser.mediaPreview = { url: isVideo ? `${source}?poster=1` : source, isVideo,
+				teaser.mediaPreview = { url: isVideo || document ? `${source}?poster=1` : source, isVideo,
+					isDocument: document, documentUrl: document ? `${source}?preview=1` : '',
 					videoUrl: isVideo ? source : '', name: record.name };
 				break;
 			}

@@ -7,6 +7,7 @@ const { createLifecycle } = require('./lifecycle');
 const { createResources } = require('./resources');
 const { registerResourceRoutes } = require('./resource-routes');
 const { createVideoPreview } = require('./video');
+const { createDocumentPreview } = require('./documents');
 const { createSummaryMedia } = require('./summary-media');
 const externalTopics = require('./external-topics');
 
@@ -77,6 +78,7 @@ exports.init = async function ({ router, middleware }) {
 		canRead: lifecycle.canRead, baseUrl: requireNodeBB('nconf').get('url') });
 	// 先注册入口，即使存储检查失败也不回退到公开本地文件。
 	const read = createReadHandler({ attachments, getStorage, setSafeFileHeaders: middleware.uploads.setSafeFileHeaders,
+		documentPreview: createDocumentPreview({ db: services.db, getStorage }),
 		videoPreview: createVideoPreview({ db: services.db, getStorage }) });
 	router.get('/attachments/:id/:variant/:filename', middleware.authenticateRequest, middleware.redirectToHomeIfBanned, read);
 	registerResourceRoutes({ router, middleware, resources: getResources(), getStorage: exports.getStorage,

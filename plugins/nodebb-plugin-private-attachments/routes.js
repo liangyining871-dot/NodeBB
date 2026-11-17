@@ -1,8 +1,9 @@
 'use strict';
 
 const { pipeline } = require('node:stream/promises');
+const { isDocument } = require('./documents');
 
-function createReadHandler({ attachments, getStorage, setSafeFileHeaders, inlineSvg = false, videoPreview }) {
+function createReadHandler({ attachments, getStorage, setSafeFileHeaders, inlineSvg = false, videoPreview, documentPreview }) {
 	return async function read(req, res) {
 		// 成功、错误、HEAD 和 Range 都禁止共享缓存，每次请求重新鉴权。
 		res.set('Cache-Control', 'private, no-store');
@@ -10,6 +11,11 @@ function createReadHandler({ attachments, getStorage, setSafeFileHeaders, inline
 		let stream;
 		try {
 			let { record, file } = await attachments.getReadable(req.params.id, req.uid, req.params.variant);
+			const document = req.params.variant === 'original' && isDocument(record);
+			if (document && req.query.download !== '1' && (req.query.poster === '1' || req.query.preview === '1')) {
+				file = await documentPreview(record, req.query.poster === '1' ? 'documentPoster' : 'document');
+				await attachments.getReadable(req.params.id, req.uid, req.params.variant);
+			}
 			// 先检查原件权限，再生成预览；转换完成后再次检查，防止等待期间权限变化。
 			const poster = req.query.poster === '1' && req.params.variant === 'original' && /\.(mp4|wmv|webm|ogg)$/i.test(record.name);
 			if (poster || (req.query.preview === '1' && req.params.variant === 'original' && /\.wmv$/i.test(record.name))) {
@@ -38,19 +44,26 @@ function createReadHandler({ attachments, getStorage, setSafeFileHeaders, inline
 			}
 			// 仅浏览器可安全展示的图片和常用视频内联，其余文件强制下载。
 			const inline = /^(image\/(jpeg|png|gif|webp|avif|x-icon|vnd.microsoft.icon)|video\/(mp4|webm|ogg))$/.test(file.mime) ||
-				(inlineSvg && file.mime === 'image/svg+xml');
+				(inlineSvg && file.mime === 'image/svg+xml') || file.mime === 'application/pdf';
 			res.attachment(poster ? `${record.name}.jpg` :
 				(req.query.preview === '1' && file.mime === 'video/mp4' ? `${record.name}.mp4` : record.name));
 			if (inline) {
 				res.set('Content-Disposition', res.get('Content-Disposition').replace(/^attachment/, 'inline'));
 			}
 			setSafeFileHeaders(res, record.name);
+			if (document && file.mime === 'application/pdf' && req.query.preview === '1') {
+				res.attachment(`${record.name.replace(/\.(pdf|ppt|pptx|doc|docx|xls|xlsx)$/i, '')}.pdf`);
+				res.set('Content-Disposition', res.get('Content-Disposition').replace(/^attachment/, 'inline'));
+			}
 			if (req.query.download === '1') { res.attachment(record.name); }
 			res.type(file.mime);
 			// A directly opened video uses the browser's native media document, which
 			// must be allowed to fetch authenticated same-origin Range requests.
 			res.set('Content-Security-Policy', /^video\/(mp4|webm|ogg)$/.test(file.mime) ?
 				"default-src 'none'; media-src 'self'; sandbox allow-same-origin" : "default-src 'none'; sandbox");
+			if (file.mime === 'application/pdf') {
+				res.set('Content-Security-Policy', "default-src 'none'; frame-ancestors 'self'; object-src 'self'");
+			}
 			res.set('Content-Length', String(range ? range.end - range.start + 1 : size));
 			if (range) {
 				res.status(206).set('Content-Range', `bytes ${range.start}-${range.end}/${size}`);
