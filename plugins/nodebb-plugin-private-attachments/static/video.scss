@@ -157,3 +157,9 @@
 	.private-document-card { padding: .5rem; }
 	.private-document-inline { height: max(320px, 65vh); }
 }
+.private-direct-upload {
+	display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .75rem;
+	border: 1px solid var(--bs-border-color); border-radius: .35rem; margin-block: .5rem;
+	span { flex-basis: 100%; overflow-wrap: anywhere; }
+	progress { flex: 1; min-width: 120px; height: 1rem; }
+}

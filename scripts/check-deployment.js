@@ -28,6 +28,8 @@ async function main() {
 		['build/public/templates/categories.js', 'category-media-preview'],
 		['build/public/nodebb.min.js', 'private-video-player'],
 		['build/public/nodebb.min.js', 'private-document-dialog'],
+		['build/public/nodebb.min.js', 'private-direct-upload'],
+		['node_modules/nodebb-plugin-composer-default/static/lib/composer/uploads.js', 'filter:composer.uploadTransport'],
 		['build/public/templates/partials/topics_list.tpl', 'data-document-src'],
 		['build/public/client.css', '.category-media-preview'],
 		['build/public/client.css', '.private-document-dialog'],
@@ -46,6 +48,10 @@ async function main() {
 		} catch { throw new Error('生产 Compose 解析失败，请检查 Docker Compose 和配置文件'); }
 		const service = compose.services?.nodebb;
 		const env = service?.environment || {};
+		const direct = require('../plugins/nodebb-plugin-private-attachments/multipart-storage').readDirectConfig(env);
+		if (direct.enabled && new URL(env.url).protocol === 'https:' && new URL(direct.publicUrl).protocol !== 'https:') {
+			throw new Error('HTTPS 论坛必须使用 HTTPS MinIO 直传入口');
+		}
 		if (env.url !== snapshot.targetUrl || env.INITIAL_APPEARANCE_SNAPSHOT !== '/usr/src/app/install/docker/appearance.snapshot.json' ||
 			env.FFMPEG_PATH !== '/usr/bin/ffmpeg') { throw new Error('Compose 的域名、外观快照或 FFmpeg 路径与发布配置不一致'); }
 		if (env.UNIPORTAL_ENABLED === 'true' && env.UNIPORTAL_REDIRECT_URI !== `${env.url}/auth/uniportal/callback`) {

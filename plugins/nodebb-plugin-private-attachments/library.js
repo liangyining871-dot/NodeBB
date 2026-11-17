@@ -10,6 +10,14 @@ const { createVideoPreview } = require('./video');
 const { createDocumentPreview } = require('./documents');
 const { createSummaryMedia } = require('./summary-media');
 const externalTopics = require('./external-topics');
+const { readDirectConfig, createMultipartStorage } = require('./multipart-storage');
+const { createDirectUploads, registerDirectUploadRoutes } = require('./direct-uploads');
+
+exports.directUploadConfig = async (data) => {
+	const config = readDirectConfig();
+	data.privateAttachmentsDirectUpload = { enabled: config.enabled, maxBytes: config.maxBytes, threshold: config.threshold };
+	return data;
+};
 
 exports.validateExternalTopic = async data => externalTopics.validate(data);
 exports.validateExternalEdit = async (payload) => { externalTopics.validate(payload.data); return payload; };
@@ -85,6 +93,18 @@ exports.init = async function ({ router, middleware }) {
 		file: requireNodeBB('./src/file'), image: services.image, upload: requireNodeBB('./src/middleware/multer'),
 		uploadPath: requireNodeBB('nconf').get('upload_path') });
 	await ensureStorage();
+	const directConfig = readDirectConfig();
+	if (directConfig.enabled) {
+		const file = requireNodeBB('./src/file');
+		const direct = createDirectUploads({ ...services, config: directConfig,
+			storage: createMultipartStorage({ getStorage, config: directConfig }),
+			detectBuffer: requireNodeBB('file-type').fileTypeFromBuffer,
+			allowedExtensions: file.allowedExtensions, blockedExtensions: file.blockedExtensions });
+		registerDirectUploadRoutes({ router, middleware, service: direct });
+		const cleanup = () => direct.cleanup().catch(() => requireNodeBB('winston').warn('[private-attachments] 过期上传任务清理失败，将稍后重试'));
+		await cleanup();
+		setInterval(cleanup, 15 * 60 * 1000).unref();
+	}
 	// 安装时生成的默认 favicon 也通过私有桶提供；程序内置源文件仍随镜像发布。
 	const defaultIcon = requireNodeBB('path').join(requireNodeBB('nconf').get('upload_path'), 'system', 'favicon.ico');
 	const file = requireNodeBB('./src/file');

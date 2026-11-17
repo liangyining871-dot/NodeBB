@@ -139,3 +139,7 @@ node --env-file=.env plugins/nodebb-plugin-private-attachments/test/integration.
 - Windows 可将便携版 Poppler 放入本地工具目录，并在 `.env` 设置 `PDFTOPPM_PATH` 为 `pdftoppm.exe` 的完整路径。实际附件检查：`node --env-file=.env scripts/test-document-preview.js <附件ID>`，会生成预览缓存并将首页图片保存到 `backups/document-preview`，保留原文件和帖子。
 - Windows 的 `LIBREOFFICE_PATH` 可指向本地 LibreOffice 的 `program/soffice.exe`。运行 `node --env-file=.env scripts/check-office-preview.js` 可生成 DOC/DOCX/XLS/XLSX 样本并验证真实转换、中文内容、多工作表、公式结果与首页封面；同样会在发布镜像构建检查中执行。
 - 转换命令参考 [LibreOffice 参数文档](https://help.libreoffice.org/latest/en-GB/text/shared/guide/start_parameters.html) 和 [Poppler pdftoppm 文档](https://manpages.debian.org/testing/poppler-utils/pdftoppm.1.en.html)。不支持内嵌 PDF 的浏览器请使用新窗口阅读或下载。
+
+### 2 GiB 视频分片直传
+
+默认关闭，可通过环境变量开启浏览器到 MinIO 的分片直传，支持进度、失败重试和取消。普通附件限制及私有读取权限保持原流程。详见 [本地配置、Compose 变量、MinIO CORS 及实测步骤](DIRECT-UPLOAD.md)。
