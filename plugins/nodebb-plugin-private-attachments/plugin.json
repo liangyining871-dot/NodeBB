@@ -1,10 +1,11 @@
 {
   "id": "nodebb-plugin-private-attachments",
   "name": "论坛私有附件",
-  "scripts": ["static/video.js", "static/documents.js", "static/external-topics.js", "static/direct-upload-client.js"],
+  "scripts": ["static/video.js", "static/documents.js", "static/external-topics.js", "static/direct-upload-client.js", "static/card-votes.js"],
   "modules": { "private-attachments/direct-upload.js": "static/direct-upload.js" },
   "scss": ["static/video.scss"],
   "hooks": [
+    { "hook": "filter:topics.get", "method": "cardVotes", "priority": 30 },
     { "hook": "filter:config.get", "method": "directUploadConfig" },
     { "hook": "filter:topic.post", "method": "validateExternalTopic" },
     { "hook": "filter:topic.create", "method": "saveExternalTopic" },

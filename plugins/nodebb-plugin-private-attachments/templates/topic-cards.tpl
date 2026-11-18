@@ -32,7 +32,11 @@
 			<div class="topic-card-stats">
 				<span title="{{tx("global:posts")}}">{{{ if ./externalLink }}}<a href="{config.relative_path}/topic/{./slug}" title="查看论坛主题，可在主题中编辑或讨论"><i class="fa fa-comment-o" aria-hidden="true"></i> 讨论 / 详情</a>{{{ else }}}<i class="fa fa-comment-o" aria-hidden="true"></i> {humanReadableNumber(./postcount)} {{tx("global:posts")}}{{{ end }}}</span>
 				<span title="{{tx("global:views")}}"><i class="fa fa-eye" aria-hidden="true"></i> {humanReadableNumber(./viewcount)} {{tx("global:views")}}</span>
+				{{{ if ./mainPid }}}
+				<button type="button" class="topic-card-vote {{{ if ./cardVote.upvoted }}}upvoted{{{ end }}}" data-vote-pid="{./mainPid}" data-upvoted="{./cardVote.upvoted}" data-downvoted="{./cardVote.downvoted}" aria-pressed="{{{ if ./cardVote.upvoted }}}true{{{ else }}}false{{{ end }}}" aria-label="{{{ if ./cardVote.upvoted }}}取消点赞{{{ else }}}点赞{{{ end }}}" title="{{{ if ./cardVote.upvoted }}}取消点赞{{{ else }}}点赞{{{ end }}}"><i class="fa fa-thumbs-o-up" aria-hidden="true"></i> <span class="topic-card-vote-count" data-votes="{./votes}">{humanReadableNumber(./votes)}</span></button>
+				{{{ else }}}
 				<span title="{{tx("global:votes")}}"><i class="fa fa-thumbs-o-up" aria-hidden="true"></i> {humanReadableNumber(./votes)}</span>
+				{{{ end }}}
 			</div>
 		</div>
 	</li>

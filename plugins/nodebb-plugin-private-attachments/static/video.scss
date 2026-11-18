@@ -163,3 +163,10 @@
 	span { flex-basis: 100%; overflow-wrap: anywhere; }
 	progress { flex: 1; min-width: 120px; height: 1rem; }
 }
+.topic-card-vote {
+	display: inline-flex; align-items: center; gap: .25rem; padding: 0; border: 0;
+	background: transparent; color: inherit; font: inherit; cursor: pointer;
+	&.upvoted, &:hover { color: var(--bs-primary, #8c71b2); }
+	&:disabled { cursor: wait; opacity: .6; }
+	&:focus-visible { outline: 2px solid var(--bs-primary, #8c71b2); outline-offset: 3px; }
+}

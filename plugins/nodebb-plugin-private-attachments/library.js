@@ -10,6 +10,9 @@ const { createVideoPreview } = require('./video');
 const { createDocumentPreview } = require('./documents');
 const { createSummaryMedia } = require('./summary-media');
 const externalTopics = require('./external-topics');
+const { decorateCardVotes } = require('./card-votes');
+
+exports.cardVotes = async data => await decorateCardVotes(data, global.nodebb.require('./src/posts'));
 const { readDirectConfig, createMultipartStorage } = require('./multipart-storage');
 const { createDirectUploads, registerDirectUploadRoutes } = require('./direct-uploads');
 

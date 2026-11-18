@@ -29,6 +29,8 @@ async function main() {
 		['build/public/nodebb.min.js', 'private-video-player'],
 		['build/public/nodebb.min.js', 'private-document-dialog'],
 		['build/public/nodebb.min.js', 'private-direct-upload'],
+		['build/public/nodebb.min.js', 'topic-card-vote'],
+		['build/public/templates/partials/topics_list.tpl', 'data-vote-pid'],
 		['node_modules/nodebb-plugin-composer-default/static/lib/composer/uploads.js', 'filter:composer.uploadTransport'],
 		['build/public/templates/partials/topics_list.tpl', 'data-document-src'],
 		['build/public/client.css', '.category-media-preview'],
