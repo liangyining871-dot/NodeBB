@@ -44,57 +44,23 @@ docker save nodebb-nodebb:latest -o D:\deploy-export\nodebb.tar
 └── backups/                    # 配置、上传文件及数据库备份
 ```
 
-准备目录及容器用户权限：
-```sh
-sudo mkdir -p /data/aixsilicon/nodebb
-cd /data/aixsilicon/nodebb
-sudo mkdir -p docker_images .docker/config .docker/public/uploads backups
-sudo chown -R 1001:1001 .docker
-```
+首次部署时提前创建上述目录，确保 `.docker` 下的目录可由容器用户 UID/GID `1001:1001` 写入。
+已有站点保留原数据库、MinIO、`.docker/config` 和 `.docker/public/uploads`，替换镜像文件；配置有变化时同步 Compose。
 
-将文件放到上述位置后，加载镜像：
+## 黄区：加载镜像并启动（已有站点更新）
+
 ```sh
+cd /data/aixsilicon/nodebb
+
 docker load -i docker_images/nodebb.tar
+
+docker compose -f docker-compose.production.yml up -d --no-deps --force-recreate nodebb
 ```
 
-传输后核对 SHA-256 与蓝区一致，再启动；可在不连接生产数据库的情况下检查镜像：
-```sh
-sha256sum docker_images/nodebb.tar
-docker compose -f docker-compose.production.yml config --quiet
-docker compose -f docker-compose.production.yml run --rm --no-deps --entrypoint node nodebb scripts/check-deployment.js --image
-```
+## 黄区：首次初始化（仅空数据库执行一次）
 
-上线前核对 Compose 中的域名、企业登录回调、PostgreSQL 和 MinIO 连接信息；生产容器使用
-`FFMPEG_PATH=/usr/bin/ffmpeg`。不要挂载本地 `build/`、`node_modules/` 或 Windows `.env`。
-确认服务器架构与镜像匹配，且容器能访问 PostgreSQL、MinIO 和企业登录接口。
-
-## 服务器首次上线（仅执行一次）
-```sh
-cd /data/aixsilicon/nodebb
-docker compose -f docker-compose.production.yml run --rm -e SETUP=1 nodebb #首次初始化
-docker compose -f docker-compose.production.yml up -d nodebb #启动
-```
-
-## 启动与检查
-```sh
-cd /data/aixsilicon/nodebb
-docker compose -f docker-compose.production.yml up -d nodebb
-docker compose -f docker-compose.production.yml ps
-docker compose -f docker-compose.production.yml logs -f --tail 100 nodebb
-```
-
-
-## 服务器后续更新（不再 setup）
-先在部署目录执行 `docker compose -f docker-compose.production.yml stop nodebb`，再备份 PostgreSQL、MinIO 对象、`.docker/config` 和 `.docker/public/uploads`。替换 `docker_images/nodebb.tar`；仅配置变化时同步 Compose，并保留生产连接信息。然后执行：
-```sh
-docker load -i docker_images/nodebb.tar
-docker compose -f docker-compose.production.yml up -d --force-recreate nodebb
-```
+首次部署需在加载镜像后、启动容器前执行以下命令；已有站点更新跳过此步骤。
 
 ```sh
-docker compose -f docker-compose.production.yml run --rm --no-deps --entrypoint node nodebb scripts/configure-posting.js --apply --max-file-size-kb=102400
+docker compose -f docker-compose.production.yml run --rm --no-deps -e SETUP=1 nodebb
 ```
-# 重启
-docker compose -f docker-compose.production.yml restart nodebb
-
-
