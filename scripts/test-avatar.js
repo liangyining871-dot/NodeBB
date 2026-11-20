@@ -49,7 +49,25 @@ async function main() {
 	const png = data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
 	const gif = ['GIF87a', 'GIF89a'].includes(data.subarray(0, 6).toString('ascii'));
 	const webp = data.subarray(0, 4).toString('ascii') === 'RIFF' && data.subarray(8, 12).toString('ascii') === 'WEBP';
-	if (!jpeg && !png && !gif && !webp) { throw new Error('返回内容不是可识别的 JPEG/PNG/GIF/WebP 图片，未保存。'); }
+	if (!jpeg && !png && !gif && !webp) {
+		console.error(`响应信息：Content-Type=${type || '未提供'}，${data.length} 字节`);
+		if (process.argv.includes('--diagnose')) {
+			const body = data.toString('utf8');
+			const textual = /^(text\/|application\/(json|xml|problem\+json))/.test(type) || /^[\s\uFEFF]*[<{[]/.test(body);
+			if (textual) {
+				const preview = body.replaceAll(token, '[已遮蔽令牌]')
+					.replace(/Bearer\s+[^\s"'<>]+/gi, 'Bearer [已遮蔽]')
+					.replace(/(["']?(?:access_token|refresh_token|id_token|authorization|client_secret|token)["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,}<]+)/gi, '$1[已遮蔽]')
+					.replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 800);
+				console.error(`正文摘要（分享前请检查个人信息）：${preview}`);
+			} else {
+				console.error(`前 16 字节（十六进制）：${data.subarray(0, 16).toString('hex')}`);
+			}
+		} else {
+			console.error('可添加 --diagnose 查看正文摘要，排查登录页或接口错误提示。');
+		}
+		throw new Error('返回内容不是可识别的 JPEG/PNG/GIF/WebP 图片，未保存。');
+	}
 	const extension = jpeg ? 'jpg' : png ? 'png' : gif ? 'gif' : 'webp';
 	const output = path.resolve(process.env.AVATAR_OUTPUT || `avatar-test.${extension}`);
 	await fs.writeFile(output, data, { flag: 'wx' });
@@ -57,7 +75,7 @@ async function main() {
 }
 
 main().catch((err) => {
-	// 不输出响应正文、请求头或错误堆栈，避免泄漏凭据。
+	// 不输出请求头或错误堆栈；正文摘要仅在 --diagnose 时输出。
 	const code = err.cause?.code || err.code;
 	if (code === 'EEXIST') {
 		console.error('测试失败：输出文件已存在，请设置其他 AVATAR_OUTPUT 或移动旧文件。');
